@@ -34,6 +34,17 @@ function TurnRows({ turns, onChange, firstField }) {
   </div>;
 }
 
+/**
+ * 挂载在 `conversation.input.overlay` 的宿主组件：只在命令打开时渲染 dialog，
+ * 关闭后返回 null，不在输入栏留下任何常驻按钮。
+ */
+export function InjectOverlay({ sessionId, scope, isOpen, subscribe, dismiss }) {
+  const [open, setOpen] = useState(isOpen ?? (() => false));
+  useEffect(() => subscribe(() => setOpen(isOpen())), [subscribe, isOpen]);
+  if (!open) return null;
+  return <InjectDialog sessionId={sessionId} scope={scope} onClose={dismiss} />;
+}
+
 export function InjectDialog({ sessionId, scope, onClose }) {
   const [turns, setTurns] = useState(() => [emptyTurn()]);
   const [templateName, setTemplateName] = useState("");

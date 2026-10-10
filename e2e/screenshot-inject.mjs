@@ -55,10 +55,14 @@ await page.evaluate(() => {
 await page.waitForTimeout(400);
 await page.screenshot({ path: "shots/inject-settings.png" });
 
-// dialog
+// dialog：由 /inject-turn 裸调用打开（输入栏没有常驻按钮）
 await page.getByRole("button", { name: "Close" }).first().click({ force: true });
 await page.waitForTimeout(900);
-await page.getByRole("button", { name: "注入" }).first().click({ force: true, timeout: 10000 });
+const composer = page.locator('div[contenteditable="true"]').first();
+await composer.click();
+await composer.fill("/inject-turn");
+await page.waitForTimeout(700);
+await page.keyboard.press("Enter");
 await page.waitForSelector('[role="dialog"][aria-label="插入构造回合"]', { timeout: 10000 });
 await page.getByPlaceholder("这条消息的内容").first().fill("当前分支只做最小必要修改。");
 await page.waitForTimeout(500);

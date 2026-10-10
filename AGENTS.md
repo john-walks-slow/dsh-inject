@@ -14,3 +14,5 @@
 - 会话级运行时状态一律走 `src/session-state.js`，它是纯函数模块，便于测试。
 - 配置页与现场 dialog 共用 `src/client/config-store.js`；写入用「本地草稿 + 合并队列」，不要在 input onChange 里直接整表覆盖。
 - 设置页命名空间是 `cordis.patch.yml` 的 entry id（`inject`），不是包名。
+- 现场 dialog **不放在输入栏按钮里**：它挂在 `conversation.input.overlay`，由 `ctx.commandUi.decorate({ name: "inject-turn", ui: { kind: "action" } })` 在裸调用时打开。装饰只接管裸调用，带参数的 `/inject-turn` 仍走宿主命令处理器。
+- 客户端命令贡献（`commandUi.register`）的名字与宿主命令同名会 fail loud；要改宿主命令的裸调用行为请用 `decorate`。

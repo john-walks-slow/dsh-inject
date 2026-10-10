@@ -79,7 +79,7 @@ function registerCommands(ctx, rawConfig) {
           const parsed = JSON.parse(input);
           turns = Array.isArray(parsed) ? parsed : parsed?.messages;
         } catch {
-          return { kind: "error", text: "用法：/inject-turn <模板名>，或 JSON 数组 [{\"role\":\"user\",\"text\":\"...\"}]" };
+          return { kind: "error", text: "用法：/inject-turn 打开注入窗口，或 /inject-turn <模板名>｜<JSON 数组>" };
         }
       }
       const normalized = Array.isArray(turns) ? turns.map(normalizeTurnMessage).filter(turn => turn.text.trim()) : [];

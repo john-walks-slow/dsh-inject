@@ -1,30 +1,29 @@
 /**
  * dsh-inject client half:
  *   - settings.section: 预设与模板编辑页
- *   - conversation.input.right: 输入栏「注入」按钮 + 现场 dialog
+ *   - conversation.input.overlay: 现场注入 dialog（由 /inject-turn 裸调用打开）
+ *
+ * 不在输入栏放按钮：`/inject-turn` 的裸调用通过 commandUi 装饰触发客户端
+ * 回调，翻转会话开关，浮层组件据此渲染 dialog。
  */
 
-import React, { useState } from "react";
+import React from "react";
 import { SettingsPanel } from "./settings-panel.jsx";
-import { InjectDialog } from "./inject-dialog.jsx";
+import { InjectOverlay } from "./inject-dialog.jsx";
+import { createDialogStore } from "./dialog-state.js";
 import { injectStyles } from "./styles.js";
 
 /** 本插件在 cordis.patch.yml 的 entry id。 */
 const ENTRY_ID = "inject";
+/** 装饰的宿主命令名：裸调用开 dialog，带参数仍走宿主处理器。 */
+const COMMAND = "inject-turn";
 
-export const inject = ["slots", "configForms"];
-
-function InjectButton({ sessionId, scope }) {
-  const [open, setOpen] = useState(false);
-  return <>
-    <button type="button" title="插入构造回合（只影响模型请求）" onClick={() => setOpen(true)}>注入</button>
-    {open && <InjectDialog sessionId={sessionId} scope={scope} onClose={() => setOpen(false)} />}
-  </>;
-}
+export const inject = ["slots", "configForms", "commandUi"];
 
 export function apply(ctx) {
   injectStyles();
   const scope = ctx.configForms.get(ENTRY_ID);
+  const dialogs = createDialogStore();
 
   ctx.effect(() => ctx.configForms.whileServed([ENTRY_ID], () => ctx.slots.inject(
     "settings.section",
@@ -35,10 +34,27 @@ export function apply(ctx) {
   )));
 
   ctx.effect(() => ctx.slots.inject(
-    "conversation.input.right",
+    "conversation.input.overlay",
     () => ctx.slots.register(
-      { name: "conversation.input.right", id: "dsh-inject", order: 210, inject: () => ({ scope }) },
-      InjectButton
+      {
+        name: "conversation.input.overlay",
+        id: "dsh-inject",
+        order: 30,
+        inject: sessionId => ({
+          sessionId,
+          scope,
+          isOpen: () => dialogs.isOpen(sessionId),
+          subscribe: dialogs.subscribe,
+          dismiss: () => dialogs.close(sessionId)
+        })
+      },
+      InjectOverlay
     )
   ));
+
+  ctx.effect(() => ctx.commandUi.decorate({
+    name: COMMAND,
+    available: () => true,
+    ui: { kind: "action", run: session => dialogs.open(String(session.sessionId)) }
+  }));
 }
