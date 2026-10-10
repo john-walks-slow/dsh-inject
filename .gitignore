@@ -1,0 +1,5 @@
+node_modules/
+lib/
+.dsh-e2e-home/
+.playwright-cli/
+.mnemon/

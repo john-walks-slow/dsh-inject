@@ -1,0 +1,8 @@
+# dsh-inject bundle patch layer
+# 在 profile 的 dsh.profile.bundles 列出 dsh-inject 即生效
+- insert:
+    - id: inject
+      name: dsh-inject
+      config:
+        presets: []
+        templates: []
