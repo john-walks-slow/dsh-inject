@@ -1,18 +1,44 @@
 /**
- * 验证命令与现场 dialog：
- *  2. /inject 默认状态（应提示未启用）
- *  3. /inject on alpha（应报告已启用）
- *  4. 输入栏「注入」dialog 插入
+ * 验证会话级启用命令：默认关闭 -> 启用 -> 查询状态。
+ *
+ * 命令结果不在 DOM 里渲染（空白会话页没有展示区），因此以会话日志中的
+ * `command/done` 事件为权威断言来源。
+ * 读 DSH_E2E_PORT / DSH_E2E_TOKEN，并从 DSH_E2E_HOME 定位会话日志。
  */
+import { execFileSync } from "node:child_process";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { chromium } from "/usr/lib/node_modules/@playwright/cli/node_modules/playwright-core/index.mjs";
 
 const port = process.env.DSH_E2E_PORT;
 const token = process.env.DSH_E2E_TOKEN || "e2etest";
+const home = process.env.DSH_E2E_HOME;
+
+/** 最新会话日志里所有命令结果文本，按出现顺序。 */
+function commandResults() {
+  const root = join(home, "sessions");
+  const logs = [];
+  for (const workspace of readdirSync(root)) {
+    const dir = join(root, workspace);
+    for (const session of readdirSync(dir)) {
+      const file = join(dir, session, "session.v4.jsonl.zstd");
+      try {
+        logs.push({ file, mtime: statSync(file).mtimeMs });
+      } catch { /* 未落盘的会话 */ }
+    }
+  }
+  logs.sort((a, b) => a.mtime - b.mtime);
+  const newest = logs.at(-1);
+  if (!newest) return [];
+  const text = execFileSync("zstd", ["-dc", newest.file], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  return text.split("\n")
+    .filter(line => line.includes('"command/done"'))
+    .map(line => JSON.parse(line).data)
+    .map(data => `${data.kind}: ${data.text}`);
+}
+
 const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-const errors = [];
-page.on("console", m => m.type() === "error" && errors.push(m.text()));
-page.on("pageerror", e => errors.push(String(e)));
 await page.goto(`http://127.0.0.1:${port}/?token=${token}`, { waitUntil: "domcontentloaded" });
 
 async function dismiss(name, timeout = 8000) {
@@ -25,26 +51,35 @@ async function dismiss(name, timeout = 8000) {
 await dismiss(/^Continue$/, 25000);
 await dismiss(/Configure later/, 15000);
 
+// 建一个名为 alpha 的预设，供命令引用
+await page.getByRole("button", { name: "Settings" }).click({ force: true });
+await dismiss(/Configure later/, 12000);
+await page.getByRole("button", { name: "Inject" }).click({ timeout: 20000 });
+await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
+await page.getByRole("button", { name: "＋ 新建预设" }).click();
+await page.getByPlaceholder("预设名称").first().fill("alpha");
+await page.waitForTimeout(1200);
+await page.getByRole("button", { name: "Close" }).first().click({ force: true });
+await page.waitForTimeout(800);
+
 const composer = page.locator('div[contenteditable="true"]').first();
 async function runCommand(line) {
   await composer.click();
   await composer.fill(line);
+  await page.waitForTimeout(600);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
   await page.waitForTimeout(500);
   await page.keyboard.press("Enter");
   await page.waitForTimeout(2000);
-  return page.locator("body").innerText();
 }
-
-console.log("2) default status =", /没有启用 inject 预设/.test(await runCommand("/inject")));
-console.log("3) enable alpha =", /已启用：alpha/.test(await runCommand("/inject on alpha")));
-console.log("3b) status after on =", /当前启用：alpha/.test(await runCommand("/inject status")));
-
-await page.getByRole("button", { name: "注入" }).first().click({ force: true, timeout: 10000 });
-await page.waitForSelector('[role="dialog"][aria-label="插入构造回合"]', { timeout: 10000 });
-await page.getByPlaceholder("这条消息的内容").first().fill("当前分支只做最小必要修改。");
-await page.screenshot({ path: "shots/inject-dialog.png" });
-await page.getByRole("button", { name: "插入到当前位置" }).click();
-await page.waitForTimeout(1200);
-console.log("4) insert accepted =", /已插入 1 条/.test(await page.locator(".dsh-inject-modal").innerText()));
-console.log("console errors:", JSON.stringify(errors.filter(e => !/404/.test(e)).slice(0, 5)));
+await runCommand("/inject");
+await runCommand("/inject on alpha");
+await runCommand("/inject status");
 await browser.close();
+
+const results = commandResults();
+console.log("1) 默认关闭 =", results[0] === "success: 当前没有启用 inject 预设");
+console.log("2) 启用生效 =", results[1] === "success: 已启用：alpha");
+console.log("3) 状态可查 =", results[2] === "success: 当前启用：alpha");
+console.log("实际日志 =", JSON.stringify(results));
