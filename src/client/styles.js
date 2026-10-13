@@ -339,6 +339,23 @@ body[data-ds-dark-theme] .dsh-inject {
   white-space: pre-wrap; word-break: break-all;
 }
 
+/* 在线预制库卡片 */
+.dsh-inject .inject-hub-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+.dsh-inject .inject-hub-card {
+  border: 1px solid var(--inject-border); border-radius: 8px;
+  background: var(--inject-bg-card); padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; transition: border-color 0.15s, background 0.15s;
+}
+.dsh-inject .inject-hub-card:hover {
+  border-color: var(--inject-border-focus); background: var(--inject-bg-subcard);
+}
+.dsh-inject .inject-hub-card-main { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.dsh-inject .inject-hub-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dsh-inject .inject-hub-title { font-size: 14px; font-weight: 600; color: var(--inject-text-primary); }
+.dsh-inject .inject-hub-desc { font-size: 12px; color: var(--inject-text-secondary); line-height: 1.45; }
+.dsh-inject .inject-hub-meta { font-size: 11px; color: var(--inject-text-tertiary); font-family: ui-monospace, monospace; }
+
 /* 模态框通用 */
 .dsh-inject-mask {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px);
@@ -347,7 +364,7 @@ body[data-ds-dark-theme] .dsh-inject {
 .dsh-inject-modal {
   background: var(--inject-bg-modal); color: var(--inject-text-primary);
   border: 1px solid var(--inject-border); border-radius: 12px;
-  width: min(720px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px;
+  width: min(780px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
 }
 `;

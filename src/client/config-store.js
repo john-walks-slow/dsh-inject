@@ -3,7 +3,7 @@
  * 命名空间，因此这里只做「读快照」和「整组原子写入」两件事。
  */
 
-import { defaultPresets, defaultTemplates, normalizeConfig, normalizePreset, normalizeRule, normalizeTemplate, compileRule, applyRuleText } from "../schema.js";
+import { defaultPresets, defaultTemplates, normalizeConfig, normalizePreset, normalizeRule, normalizeTemplate, compileRule, applyRuleText, KEYSMITH_DEFAULT_RULES } from "../schema.js";
 
 export const EMPTY_CONFIG = { presets: [], templates: [] };
 
@@ -129,4 +129,96 @@ export function simulateReplacement(text, rules, role = "user") {
   }
 
   return { output: currentText, hits, skippedSlash: false };
+}
+
+/** Keysmith 官方与社区热门预制在线索引清单（按需现场抓取，不占本地包体积）。 */
+export const REMOTE_PRESET_CATALOG = [
+  {
+    id: "keysmith-codex-unrestricted",
+    name: "Keysmith: Codex Unrestricted",
+    tag: "Codex",
+    author: "Jia-Ethan / codex-keysmith",
+    description: "经典本地执行模式。解除拒答句式，提供 CHECK_FN / SERIAL / LICENSE_BLOB 占位符契约与逆向/破解直出流程。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-unrestricted.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
+    id: "keysmith-codex-contract",
+    name: "Keysmith: Codex Contract",
+    tag: "Codex",
+    author: "Jia-Ethan / codex-keysmith",
+    description: "强交付契约规范。首行直出代码或步骤，严格消除任何前置废话、安全免责声明和降级替代品。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-contract.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
+    id: "keysmith-claude-append",
+    name: "Claude-Keysmith: Creative Append",
+    tag: "Claude Code",
+    author: "Jia-Ethan / claude-keysmith",
+    description: "自由创作与对抗性安全边界扩展。把成人文学等虚构创作视为主机本职手艺，不以说教或删节代替正文。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/claude-keysmith/main/examples/claude-append-prompt.md",
+    rules: []
+  },
+  {
+    id: "keysmith-claude-rules",
+    name: "Claude-Keysmith: Project Rules",
+    tag: "Claude Code",
+    author: "Jia-Ethan / claude-keysmith",
+    description: "Claude Code 本地实验室规范。首行 [P] 交付标记，将 CTF/安全测试/样本分析明确界定为有效任务。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/claude-keysmith/main/examples/claude-project-rules.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
+    id: "keysmith-grok-unrestricted",
+    name: "Grok-Keysmith: Unrestricted",
+    tag: "Grok Build",
+    author: "Jia-Ethan / grok-keysmith",
+    description: "Grok Build 本地工程环境规范。声明主机本地样本分析模式，抑制免责推诿，直出交付工件代码。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/grok-keysmith/main/examples/grok-unrestricted.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  }
+];
+
+/** 从服务端代理抓取远程内容，若失败自动尝试前端直接 fetch 兜底。 */
+export async function fetchRemoteText(url) {
+  try {
+    const resp = await fetch("/dsh-inject/fetch-remote", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url })
+    });
+    if (resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      if (data?.ok && typeof data.text === "string") return data.text;
+    }
+  } catch {
+    // 代理异常时回退到直接拉取
+  }
+
+  const direct = await fetch(url);
+  if (!direct.ok) throw new Error(`HTTP ${direct.status} ${direct.statusText}`);
+  return await direct.text();
+}
+
+/** 将抓取到的远端内容（Markdown 或 JSON）装配为合规的预设对象。 */
+export function assemblePresetFromRemote(meta, text) {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      const parsed = parsePresets(trimmed);
+      if (parsed.length) return parsed[0];
+    } catch {
+      // 若不是预设格式则当纯文本处理
+    }
+  }
+
+  // 默认作为 System 规约构造预设
+  return normalizePreset({
+    id: newId("preset"),
+    name: meta.name || "远程拉取预设",
+    description: meta.description || `从 ${meta.url || "远程地址"} 实时拉取`,
+    rules: (meta.rules || []).map(r => normalizeRule(r)),
+    turns: [{ role: "system", text: trimmed }]
+  });
 }

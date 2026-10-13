@@ -177,6 +177,41 @@ export function apply(ctx, rawConfig = {}) {
         });
       }
     }));
+
+    // 远程预设与规则当场抓取代理通道（避免跨域限制并复用系统代理）
+    child.effect(() => child.webServer.register({
+      kind: "exact",
+      path: "/dsh-inject/fetch-remote",
+      handler: (req, res) => {
+        if (req.method !== "POST") return writeJson(res, 405, { ok: false, message: "method not allowed" });
+        const admission = admitRequest(child.connection, req);
+        if (admission.rejection) return writeJson(res, admission.rejection, { ok: false, message: "request rejected" });
+        void readJsonBody(req).then(async body => {
+          const url = typeof body?.url === "string" ? body.url.trim() : "";
+          if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+            return writeJson(res, 400, { ok: false, message: "valid http(s) url is required" });
+          }
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 12000);
+            const resp = await fetch(url, {
+              signal: controller.signal,
+              headers: { "User-Agent": "dsh-inject/0.1.0 (DeepSeek Harness plugin)" }
+            });
+            clearTimeout(timer);
+            if (!resp.ok) {
+              return writeJson(res, resp.status, { ok: false, message: `Remote server returned HTTP ${resp.status}` });
+            }
+            const text = await resp.text();
+            writeJson(res, 200, { ok: true, text });
+          } catch (err) {
+            writeJson(res, 502, { ok: false, message: `Failed to fetch remote URL: ${err.message}` });
+          }
+        }).catch(error => {
+          writeJson(res, 400, { ok: false, message: String(error?.message ?? error) });
+        });
+      }
+    }));
   });
 
   ctx.on("llm/stream", (options, next) => {

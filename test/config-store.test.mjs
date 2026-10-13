@@ -8,7 +8,8 @@ import {
   parsePresets,
   simulateReplacement,
   emptyPreset,
-  emptyRule
+  emptyRule,
+  assemblePresetFromRemote
 } from "../src/client/config-store.js";
 
 test("config-store: cloneRule and clonePreset generate unique ids and copy suffixes", () => {
@@ -71,4 +72,23 @@ test("config-store: simulateReplacement calculates text changes, hits and protec
   // 保护标签内不被替换
   const resTag = simulateReplacement("目标<system-reminder>目标</system-reminder>目标", rules, "user");
   assert.equal(resTag.output, "TARGET<system-reminder>目标</system-reminder>TARGET");
+});
+
+test("config-store: assemblePresetFromRemote parses markdown text into system turn preset", () => {
+  const meta = {
+    id: "test-meta",
+    name: "远程测试预设",
+    description: "说明文本",
+    rules: [{ from: "A", to: "B" }]
+  };
+  const markdownText = "You are a helpful assistant in local mode.";
+  const preset = assemblePresetFromRemote(meta, markdownText);
+
+  assert.equal(preset.name, "远程测试预设");
+  assert.equal(preset.turns.length, 1);
+  assert.equal(preset.turns[0].role, "system");
+  assert.equal(preset.turns[0].text, markdownText);
+  assert.equal(preset.rules.length, 1);
+  assert.equal(preset.rules[0].pattern, "A");
+  assert.equal(preset.rules[0].replacement, "B");
 });

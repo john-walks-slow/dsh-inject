@@ -1,14 +1,16 @@
 /**
  * dsh-inject 设置页：深度 UX 优化的多预设管理、规则配置、构造回合模板与即时测试沙盒。
  *
- * 核心 UX 特性：
- * 1. 实时自动保存状态感知（已同步 / 保存中 / 草稿），不丢任何编辑。
- * 2. 标签页与折叠手风琴架构，彻底解决多规则页面无限滚动的认知负荷。
- * 3. 规则即时搜索与过滤、全部启用/全部停用批量操作、上移/下移排序支持。
- * 4. 正则表达式实时语法检验与红框告警，杜绝非法模式导致的运行时崩溃。
- * 5. 操作防误触：删除操作双击确认保护，避免手机触控或鼠标误点丢失配置。
- * 6. 规则即时测试沙盒（Playground）：无需发起真实对话即可秒级验证替换效果与命中规则。
- * 7. 优雅的导入/导出弹窗：淘汰原始 prompt，支持粘贴 Keysmith / Preset JSON 并实时解析校验。
+ * 核心特性：
+ * 1. 结构化标签页与折叠手风琴架构，彻底解决多规则页面无限滚动的认知负荷。
+ * 2. 规则即时搜索与过滤、全部启用/全部停用批量操作、上移/下移排序支持。
+ * 3. 正则表达式实时语法检验与红框告警，杜绝非法模式导致的运行时崩溃。
+ * 4. 操作防误触：删除操作双击确认保护，避免手机触控或鼠标误点丢失配置。
+ * 5. 规则即时测试沙盒（Playground）：无需发起真实对话即可秒级验证替换效果与命中规则。
+ * 6. 现代预制库与导入/导出弹窗：
+ *    - ✨ 在线预制库（Live Hub）：从 GitHub 官方源现场实时拉取最新指令与规约，零内置冗余；
+ *    - 📥 粘贴 JSON 导入：兼容 Keysmith 格式、规则包与 Preset JSON；
+ *    - 📤 导出配置：一键复制 JSON。
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -24,7 +26,10 @@ import {
   cloneTemplate,
   parseKeysmithRules,
   parsePresets,
-  simulateReplacement
+  simulateReplacement,
+  REMOTE_PRESET_CATALOG,
+  fetchRemoteText,
+  assemblePresetFromRemote
 } from "./config-store.js";
 import { defaultPresets, ruleError } from "../schema.js";
 
@@ -41,10 +46,9 @@ const TURN_ROLES = [
   { id: "tool", label: "工具", className: "tool" }
 ];
 
-/** 本地草稿与合并写入，外加保存状态追踪。 */
+/** 本地草稿与合并写入。 */
 function useLocalConfig(scope) {
   const [config, setConfig] = useState(() => readConfig(scope));
-  const [saveStatus, setSaveStatus] = useState("saved"); // saved | saving | dirty
   const latest = useRef(config);
   const generation = useRef(0);
   const settled = useRef(0);
@@ -68,24 +72,19 @@ function useLocalConfig(scope) {
     const next = typeof updater === "function" ? updater(latest.current) : updater;
     latest.current = next;
     setConfig(next);
-    setSaveStatus("dirty");
 
     const gen = ++generation.current;
     if (timer.current) clearTimeout(timer.current);
 
     timer.current = setTimeout(() => {
-      setSaveStatus("saving");
       timer.current = null;
       void writeConfig(scope, latest.current)
         .catch(() => undefined)
-        .finally(() => {
-          settled.current = gen;
-          setSaveStatus("saved");
-        });
+        .finally(() => { settled.current = gen; });
     }, 300);
   }, [scope]);
 
-  return [config, commit, saveStatus];
+  return [config, commit];
 }
 
 /** 保护性操作按钮：第一次点击显示“确认删除？”，3秒后自动恢复，防误触。 */
@@ -214,7 +213,7 @@ function RuleEditor({ rule, onChange, onRemove, onClone, onMoveUp, onMoveDown, i
             className={regexErr ? "error" : ""}
             value={rule.pattern ?? ""}
             onChange={e => patch({ pattern: e.target.value })}
-            placeholder={rule.regex ? "要匹配的正规表达式，例如: (入侵|破解)" : "要匹配的文字"}
+            placeholder={rule.regex ? "要匹配的正则表达式，例如: (入侵|破解)" : "要匹配的文字"}
           />
           {regexErr && <span className="error-text">⚠ {regexErr}</span>}
         </div>
@@ -510,7 +509,7 @@ function PlaygroundPanel({ presets }) {
           <button
             type="button"
             className="ghost sm"
-            onClick={() => setInputSample("/inject on keysmith-unrestricted")}
+            onClick={() => setInputSample("/inject on Keysmith: Codex Unrestricted")}
           >
             载入示例二 (斜杠命令保护)
           </button>
@@ -561,12 +560,26 @@ function PlaygroundPanel({ presets }) {
   );
 }
 
-/** 现代导入/导出弹窗 */
-function ImportExportModal({ isOpen, onClose, targetPreset, onImportRules, onImportPresets, allConfig }) {
-  const [tab, setTab] = useState("import"); // import | export
+/** 现代预制库与导入/导出弹窗 */
+function ImportExportModal({
+  isOpen,
+  onClose,
+  targetPreset,
+  onImportRules,
+  onImportPresets,
+  allConfig,
+  onAppendPreset
+}) {
+  const [tab, setTab] = useState("hub"); // hub | import | export
   const [importMode, setImportMode] = useState("append"); // append | replace
   const [rawText, setRawText] = useState("");
   const [parseResult, setParseResult] = useState(null);
+
+  // 在线抓取状态
+  const [fetchingId, setFetchingId] = useState("");
+  const [fetchNotice, setFetchNotice] = useState("");
+  const [customUrl, setCustomUrl] = useState("");
+  const [customName, setCustomName] = useState("");
 
   useEffect(() => {
     if (!rawText.trim()) {
@@ -583,6 +596,51 @@ function ImportExportModal({ isOpen, onClose, targetPreset, onImportRules, onImp
   }, [rawText]);
 
   if (!isOpen) return null;
+
+  // 现场抓取预设
+  const handleLiveFetch = async (meta) => {
+    setFetchingId(meta.id);
+    setFetchNotice(`正在从 ${meta.url} 现场抓取最新内容...`);
+    try {
+      const text = await fetchRemoteText(meta.url);
+      const assembled = assemblePresetFromRemote(meta, text);
+      onAppendPreset(assembled);
+      setFetchNotice(`✓ 已成功当场抓取并导入预设「${meta.name}」！`);
+      setTimeout(() => setFetchNotice(""), 3500);
+    } catch (err) {
+      setFetchNotice(`✕ 抓取失败：${err.message}`);
+    } finally {
+      setFetchingId("");
+    }
+  };
+
+  // 自定义 URL 现场抓取
+  const handleCustomFetch = async () => {
+    const url = customUrl.trim();
+    if (!url) return;
+    setFetchingId("custom");
+    setFetchNotice(`正在当场拉取：${url}...`);
+    try {
+      const text = await fetchRemoteText(url);
+      const meta = {
+        id: `custom-${Date.now()}`,
+        name: customName.trim() || `远程抓取预设 (${new URL(url).pathname.split("/").pop() || "Custom"})`,
+        description: `从 ${url} 实时动态拉取`,
+        url,
+        rules: []
+      };
+      const assembled = assemblePresetFromRemote(meta, text);
+      onAppendPreset(assembled);
+      setFetchNotice(`✓ 已成功从远程链接拉取并导入预设「${assembled.name}」！`);
+      setCustomUrl("");
+      setCustomName("");
+      setTimeout(() => setFetchNotice(""), 3500);
+    } catch (err) {
+      setFetchNotice(`✕ 抓取失败：${err.message}`);
+    } finally {
+      setFetchingId("");
+    }
+  };
 
   const handleImport = () => {
     if (!parseResult || !parseResult.ok) return;
@@ -606,7 +664,7 @@ function ImportExportModal({ isOpen, onClose, targetPreset, onImportRules, onImp
       <div className="dsh-inject-modal">
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
           <strong style={{ fontSize: 16 }}>
-            {targetPreset ? `规则导入 / 导出（${targetPreset.name}）` : "配置导入 / 导出"}
+            {targetPreset ? `规则管理（${targetPreset.name}）` : "预制库与规则导入 / 导出"}
           </strong>
           <button type="button" className="ghost" onClick={onClose}>✕</button>
         </div>
@@ -614,21 +672,117 @@ function ImportExportModal({ isOpen, onClose, targetPreset, onImportRules, onImp
         <div className="inject-tabs">
           <button
             type="button"
+            className={`inject-tab-btn ${tab === "hub" ? "active" : ""}`}
+            onClick={() => setTab("hub")}
+          >
+            ✨ 在线预制库 (Live Hub)
+          </button>
+          <button
+            type="button"
             className={`inject-tab-btn ${tab === "import" ? "active" : ""}`}
             onClick={() => setTab("import")}
           >
-            批量导入
+            📥 粘贴 JSON 导入
           </button>
           <button
             type="button"
             className={`inject-tab-btn ${tab === "export" ? "active" : ""}`}
             onClick={() => setTab("export")}
           >
-            导出 JSON
+            📤 导出当前配置
           </button>
         </div>
 
-        {tab === "import" ? (
+        {fetchNotice && (
+          <div style={{
+            padding: "8px 12px",
+            borderRadius: 6,
+            marginBottom: 10,
+            fontSize: 12,
+            background: fetchNotice.startsWith("✓") ? "var(--inject-success-bg)" : (fetchNotice.startsWith("✕") ? "var(--inject-danger-bg)" : "var(--inject-brand-bg)"),
+            color: fetchNotice.startsWith("✓") ? "var(--inject-success)" : (fetchNotice.startsWith("✕") ? "var(--inject-danger)" : "var(--inject-brand)")
+          }}>
+            {fetchNotice}
+          </div>
+        )}
+
+        {/* Tab 1: 在线预制库（现场抓取） */}
+        {tab === "hub" && (
+          <div className="col" style={{ gap: 14 }}>
+            <p className="hint-text" style={{ margin: 0 }}>
+              按需从 GitHub 官方源<strong>当场实时抓取</strong>最新指令与规约，不占用本地离线体积。点击任意项即可当场拉取并导入。
+            </p>
+
+            <div className="inject-hub-list">
+              {REMOTE_PRESET_CATALOG.map(meta => (
+                <div key={meta.id} className="inject-hub-card">
+                  <div className="inject-hub-card-main">
+                    <div className="inject-hub-title-row">
+                      <span className="inject-hub-title">{meta.name}</span>
+                      <span className="inject-badge" style={{ background: "var(--inject-brand-bg)", color: "var(--inject-brand)" }}>
+                        {meta.tag}
+                      </span>
+                    </div>
+                    <div className="inject-hub-desc">{meta.description}</div>
+                    <div className="inject-hub-meta">
+                      来源: {meta.author} · 配套规则: {meta.rules.length} 条
+                    </div>
+                  </div>
+                  <div className="row" style={{ flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      className="primary sm"
+                      disabled={fetchingId === meta.id}
+                      onClick={() => handleLiveFetch(meta)}
+                    >
+                      {fetchingId === meta.id ? "⏳ 抓取中..." : "🌐 当场抓取并载入"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 自定义远程链接在线抓取 */}
+            <div style={{
+              border: "1px dashed var(--inject-border)",
+              borderRadius: 8,
+              padding: 12,
+              background: "var(--inject-bg-card)"
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>🔗 自定义远程链接现场抓取</span>
+              <p className="hint-text" style={{ margin: "4px 0 8px" }}>
+                输入任何 GitHub Raw、Gist 或外部 Markdown/JSON 链接，系统将现场拉取并组装为预设。
+              </p>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  style={{ flex: "2 1 240px" }}
+                  value={customUrl}
+                  onChange={e => setCustomUrl(e.target.value)}
+                  placeholder="https://raw.githubusercontent.com/.../rules.md"
+                />
+                <input
+                  type="text"
+                  style={{ flex: "1 1 120px" }}
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="预设名称（可选）"
+                />
+                <button
+                  type="button"
+                  className="sm"
+                  disabled={!customUrl.trim() || fetchingId === "custom"}
+                  onClick={handleCustomFetch}
+                >
+                  {fetchingId === "custom" ? "⏳ 抓取中..." : "当场抓取"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: 粘贴 JSON 导入 */}
+        {tab === "import" && (
           <div className="col" style={{ gap: 12 }}>
             <p className="hint-text" style={{ margin: 0 }}>
               支持粘贴 Keysmith 格式（如 <code>[{JSON.stringify({ from: "A", to: "B" })}]</code>）、<code>{"{ rules: [...] }"}</code> 或完整预设 JSON。
@@ -691,7 +845,10 @@ function ImportExportModal({ isOpen, onClose, targetPreset, onImportRules, onImp
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* Tab 3: 导出配置 */}
+        {tab === "export" && (
           <div className="col" style={{ gap: 12 }}>
             <textarea
               readOnly
@@ -713,7 +870,7 @@ function ImportExportModal({ isOpen, onClose, targetPreset, onImportRules, onImp
 
 /** 主设置面板入口 */
 export function SettingsPanel({ scope }) {
-  const [config, commit, saveStatus] = useLocalConfig(scope);
+  const [config, commit] = useLocalConfig(scope);
   const [activeTab, setActiveTab] = useState("presets"); // presets | templates | playground
   const [modalState, setModalState] = useState({ open: false, targetPreset: null });
 
@@ -756,20 +913,20 @@ export function SettingsPanel({ scope }) {
     }));
   };
 
+  // 单独追加一个预设（例如从在线预制库抓取后）
+  const handleAppendPreset = (newPreset) => {
+    commit(current => ({
+      ...current,
+      presets: [...current.presets, newPreset]
+    }));
+  };
+
   return (
     <section className="dsh-inject" style={{ padding: "16px 8px", maxWidth: 960 }}>
-      {/* 头部区：标题、说明与保存状态指示灯 */}
+      {/* 头部区：简洁纯粹的标题与预制库管理入口 */}
       <div className="inject-header">
         <div className="inject-title-group">
-          <div className="inject-main-title">
-            <span>dsh-inject</span>
-            <span className="inject-status-pill">
-              <span className={`status-dot ${saveStatus}`} />
-              {saveStatus === "saved" && "已自动同步"}
-              {saveStatus === "saving" && "正在保存..."}
-              {saveStatus === "dirty" && "本地草稿已修改"}
-            </span>
-          </div>
+          <h2 className="inject-main-title" style={{ margin: 0 }}>dsh-inject</h2>
           <p className="inject-desc">
             为模型请求提供请求侧替换规则与开头回合构造（不改写界面与历史记录）。支持 Keysmith 生态与规约兼容。
           </p>
@@ -778,17 +935,10 @@ export function SettingsPanel({ scope }) {
         <div className="row" style={{ gap: 8 }}>
           <button
             type="button"
-            className="ghost sm"
+            className="primary sm"
             onClick={() => setModalState({ open: true, targetPreset: null })}
           >
-            📦 导入 / 导出
-          </button>
-          <button
-            type="button"
-            className="ghost sm"
-            onClick={() => commit(current => ({ ...current, presets: [...current.presets, ...defaultPresets()] }))}
-          >
-            ✨ 载入 Keysmith 官方预设
+            📦 预制库与导入/导出
           </button>
         </div>
       </div>
@@ -843,9 +993,9 @@ export function SettingsPanel({ scope }) {
                 <button
                   type="button"
                   className="primary"
-                  onClick={() => commit(current => ({ ...current, presets: defaultPresets() }))}
+                  onClick={() => setModalState({ open: true, targetPreset: null })}
                 >
-                  载入 Keysmith 官方预设
+                  打开在线预制库并载入
                 </button>
                 <button
                   type="button"
@@ -921,7 +1071,7 @@ export function SettingsPanel({ scope }) {
         <PlaygroundPanel presets={presets} />
       )}
 
-      {/* 导入/导出弹窗 */}
+      {/* 预制库与导入/导出弹窗 */}
       <ImportExportModal
         isOpen={modalState.open}
         targetPreset={modalState.targetPreset}
@@ -929,6 +1079,7 @@ export function SettingsPanel({ scope }) {
         onImportRules={handleImportRules}
         onImportPresets={handleImportPresets}
         allConfig={config}
+        onAppendPreset={handleAppendPreset}
       />
     </section>
   );
