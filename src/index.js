@@ -178,7 +178,7 @@ export function apply(ctx, rawConfig = {}) {
       }
     }));
 
-    // 远程预设与规则当场抓取代理通道（避免跨域限制并复用系统代理）
+    // 远程规则代理请求
     child.effect(() => child.webServer.register({
       kind: "exact",
       path: "/dsh-inject/fetch-remote",

@@ -131,7 +131,6 @@ export function simulateReplacement(text, rules, role = "user") {
   return { output: currentText, hits, skippedSlash: false };
 }
 
-/** Keysmith 官方与社区热门预制在线索引清单（按需现场抓取，不占本地包体积）。遵循 MIT 开源协议署名。 */
 export const REMOTE_PRESET_CATALOG = [
   {
     id: "keysmith-codex-unrestricted",

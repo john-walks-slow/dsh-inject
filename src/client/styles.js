@@ -1,8 +1,4 @@
-/**
- * dsh-inject 设置页与现场 dialog 共享的高级样式体系。
- * 遵循 DSH 规范，深度适配浅色/深色模式（高对比度 + 层次丰富），
- * 对各类按钮（Primary/Ghost/Default/Danger）提供强制高对比度防护，杜绝任何白底白字或反色不可见。
- */
+/** dsh-inject 设置页与 dialog 样式体系。支持浅色/深色主题与高对比度按钮呈现。 */
 
 const STYLE_ID = "dsh-inject-style";
 
@@ -44,7 +40,6 @@ const CSS = `
   box-sizing: border-box;
 }
 
-/* 深色模式深色调优：强制确保暗底浅字，主按钮稳固为科技蓝白字 */
 body[data-ds-dark-theme] .dsh-inject,
 [data-ds-dark-theme] .dsh-inject {
   --inject-bg-base: #111215;
@@ -270,9 +265,7 @@ body[data-ds-dark-theme] .dsh-inject,
   background: var(--inject-bg-modal); color: var(--inject-text-primary);
 }
 
-/* ==========================================================================
-   按钮体系规范：坚不可摧的高对比度，杜绝任何白底白字
-   ========================================================================== */
+/* 按钮 */
 .dsh-inject button {
   font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px;
   border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center;
@@ -288,7 +281,6 @@ body[data-ds-dark-theme] .dsh-inject,
   color: var(--inject-text-primary);
 }
 
-/* 核心 Primary 主按钮：无论深浅模式，永远保持高对比度科技蓝背景 + 纯白文字 */
 .dsh-inject button.primary {
   background: #2563eb !important;
   border-color: #2563eb !important;
@@ -301,7 +293,6 @@ body[data-ds-dark-theme] .dsh-inject,
   color: #ffffff !important;
 }
 
-/* 幽灵按钮 Ghost */
 .dsh-inject button.ghost {
   border-color: transparent !important;
   background: transparent !important;
@@ -312,7 +303,6 @@ body[data-ds-dark-theme] .dsh-inject,
   color: var(--inject-text-primary) !important;
 }
 
-/* 危险操作与二次确认 */
 .dsh-inject button.danger {
   color: var(--inject-danger) !important;
   border-color: transparent !important;
