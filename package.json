@@ -1,11 +1,34 @@
 {
   "name": "dsh-inject",
   "version": "0.1.0",
-  "description": "Advanced model-context injection and request-only rewriting for DeepSeek Harness",
+  "description": "Advanced model-context injection and request-only rewriting for DeepSeek Harness with native Keysmith rules compatibility. dsh-inject：为 DeepSeek Harness 提供高级上下文注入与请求侧消息重写，原生兼容 Keysmith 规则集。",
+  "license": "MIT",
+  "author": "johnnren",
   "type": "module",
   "main": "./lib/index.js",
   "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./cordis.patch.yml": "./cordis.patch.yml", "./package.json": "./package.json" },
-  "files": ["lib", "cordis.patch.yml", "README.md"],
+  "files": ["lib", "cordis.patch.yml", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/john-walks-slow/dsh-inject.git"
+  },
+  "homepage": "https://github.com/john-walks-slow/dsh-inject#readme",
+  "bugs": {
+    "url": "https://github.com/john-walks-slow/dsh-inject/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis-plugin",
+    "context-injection",
+    "rewrite",
+    "keysmith",
+    "prompt-injection",
+    "上下文管理",
+    "请求重写",
+    "预设"
+  ],
   "scripts": { "build": "node scripts/build.mjs", "build:client": "node scripts/build-client.mjs", "check": "node --input-type=module -e \"await import('./lib/index.js')\" && node --check lib/client.js", "test": "node --test test/*.test.mjs", "e2e:commands": "dsh-e2e run e2e/verify-commands.mjs", "e2e:dialog": "dsh-e2e run e2e/verify-dialog.mjs", "e2e:shots": "dsh-e2e run e2e/screenshot-inject.mjs", "prepare": "npm run build" },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" }, "client": { "inject": ["@deepseek-ai/dsh-client-ui-settings"], "platform": "web" } },
   "dependencies": {

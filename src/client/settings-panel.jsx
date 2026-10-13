@@ -7,7 +7,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { readConfig, writeConfig, emptyPreset, emptyRule, emptyTemplate, emptyTurn } from "./config-store.js";
+import { readConfig, writeConfig, emptyPreset, emptyRule, emptyTemplate, emptyTurn, parseKeysmithRules } from "./config-store.js";
+import { defaultPresets } from "../schema.js";
 
 const ROLES = [["user", "用户"], ["assistant", "助手"], ["tool", "工具返回"]];
 const TURN_ROLES = [["system", "系统"], ["assistant", "助手"], ["user", "用户"], ["tool", "工具"]];
@@ -114,7 +115,16 @@ function PresetCard({ preset, onChange, onRemove }) {
       onChange={value => patch({ rules: preset.rules.map((item, i) => i === index ? value : item) })}
       onRemove={() => patch({ rules: preset.rules.filter((_, i) => i !== index) })}
     />)}
-    <button type="button" onClick={() => patch({ rules: [...(preset.rules ?? []), emptyRule()] })}>＋ 添加替换规则</button>
+    <div className="row" style={{ marginTop: 8, gap: 8 }}>
+      <button type="button" onClick={() => patch({ rules: [...(preset.rules ?? []), emptyRule()] })}>＋ 添加替换规则</button>
+      <button type="button" className="ghost" onClick={() => {
+        const raw = window.prompt("粘贴 Keysmith 规则 JSON（支持 [{\"from\":\"...\",\"to\":\"...\"}] 或 {\"rules\":[...]}）：");
+        if (!raw) return;
+        const parsed = parseKeysmithRules(raw);
+        if (parsed.length) patch({ rules: [...(preset.rules ?? []), ...parsed] });
+        else window.alert("未能解析出有效规则");
+      }}>📥 导入 Keysmith 规则</button>
+    </div>
 
     <div className="sub">开头构造回合（放进请求最前面，可含系统/助手/用户/工具）</div>
     <TurnsEditor turns={preset.turns ?? []} onChange={turns => patch({ turns })} />
@@ -146,7 +156,10 @@ export function SettingsPanel({ scope }) {
 
     <div className="head">
       <h3>预设（{presets.length}）</h3>
-      <button type="button" className="primary" onClick={() => commit(current => ({ ...current, presets: [...current.presets, emptyPreset()] }))}>＋ 新建预设</button>
+      <div className="row" style={{ gap: 8 }}>
+        <button type="button" className="ghost" onClick={() => commit(current => ({ ...current, presets: [...current.presets, ...defaultPresets()] }))}>＋ 载入 Keysmith 预设</button>
+        <button type="button" className="primary" onClick={() => commit(current => ({ ...current, presets: [...current.presets, emptyPreset()] }))}>＋ 新建预设</button>
+      </div>
     </div>
     {presets.length === 0 && <p className="hint">还没有预设。点「＋ 新建预设」创建，可建立任意多个。</p>}
     {presets.map((preset, index) => <PresetCard

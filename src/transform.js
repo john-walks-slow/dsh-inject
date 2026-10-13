@@ -1,6 +1,31 @@
 import { applyRuleText, compileRule } from "./schema.js";
 import { createAssistantMessage, createSystemMessage, createUserMessage } from "@deepseek-ai/dsh-llm";
 
+export function isSlashCommand(text) {
+  return typeof text === "string" && text.trimStart().startsWith("/");
+}
+
+const PROTECTED_TAG_RE = /(<(?:system-reminder|command-name|dsh_im)[\s\S]*?<\/(?:system-reminder|command-name|dsh_im)>)/g;
+
+export function applyRulesToText(text, applicable, role) {
+  if (role === "user" && isSlashCommand(text)) return text;
+  if (!PROTECTED_TAG_RE.test(text)) {
+    let next = text;
+    for (const { rule, compiled: c } of applicable) next = applyRuleText(c, rule.replacement, next);
+    return next;
+  }
+  // 保护系统注入标签（如 <system-reminder>、<command-name>、<dsh_im>）内部文本不被改写
+  const parts = text.split(PROTECTED_TAG_RE);
+  return parts.map(part => {
+    if (part.startsWith("<system-reminder>") || part.startsWith("<command-name>") || part.startsWith("<dsh_im>")) {
+      return part;
+    }
+    let next = part;
+    for (const { rule, compiled: c } of applicable) next = applyRuleText(c, rule.replacement, next);
+    return next;
+  }).join("");
+}
+
 function roleOf(message) {
   if (message?.role === "toolResult" || message?.role === "tool") return "tool";
   if (message?.role === "assistant") return "assistant";
@@ -28,8 +53,7 @@ export function transformMessages(messages, presets) {
     if (!applicable.length) return message;
     let changed = false;
     const content = mapContent(message.content, text => {
-      let next = text;
-      for (const { rule, compiled: c } of applicable) next = applyRuleText(c, rule.replacement, next);
+      const next = applyRulesToText(text, applicable, role);
       changed ||= next !== text;
       return next;
     });

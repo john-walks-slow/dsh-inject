@@ -53,6 +53,15 @@ npm install dsh-inject
 
 这是通过客户端命令装饰实现的：`/inject-turn` 的**裸调用**在客户端打开窗口，带参数时仍由宿主命令处理。
 
+## Keysmith 兼容与默认包含项
+
+`dsh-inject` 原生兼容并默认预置 **Keysmith**（Keysmith Switch / codex-keysmith）规则体系：
+
+- **默认预设**：内置 `Keysmith: Unrestricted` 预设，包含其标志性的本地执行模式系统规约（`Local execution mode active`）及常用敏感词/边界词中性化替换规则；在未配置时作为默认包含项。
+- **格式直接适配**：规则对象直接兼容 Keysmith 格式（`{ "from": "...", "to": "..." }`），自动映射为 `pattern`、`replacement` 并绑定至用户输入（`targets: ["user"]`）。
+- **一键导入**：设置页提供「导入 Keysmith 规则」入口，支持一键批量解析粘贴的 Keysmith 规则包或规则数组。
+- **安全保护机制**：对以 `/` 开头的斜杠命令以及 `<system-reminder>`、`<command-name>` 等系统注入标签自动跳过改写，避免误伤系统指令或命令参数。
+
 ## 已知限制
 
 - 未在界面上标记被替换的片段（原文照旧显示）。
