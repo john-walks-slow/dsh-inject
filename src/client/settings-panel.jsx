@@ -53,8 +53,8 @@ function useLocalConfig(scope) {
   return [config, commit];
 }
 
-function TextInput({ value, onChange, placeholder, className = "" }) {
-  return <input type="text" className={className} value={value ?? ""} placeholder={placeholder} onChange={event => onChange(event.target.value)} />;
+function TextInput({ value, onChange, placeholder, className = "", style }) {
+  return <input type="text" className={className} style={style} value={value ?? ""} placeholder={placeholder} onChange={event => onChange(event.target.value)} />;
 }
 
 function RuleEditor({ rule, onChange, onRemove }) {
