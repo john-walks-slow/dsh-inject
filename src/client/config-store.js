@@ -131,13 +131,15 @@ export function simulateReplacement(text, rules, role = "user") {
   return { output: currentText, hits, skippedSlash: false };
 }
 
-/** Keysmith 官方与社区热门预制在线索引清单（按需现场抓取，不占本地包体积）。 */
+/** Keysmith 官方与社区热门预制在线索引清单（按需现场抓取，不占本地包体积）。遵循 MIT 开源协议署名。 */
 export const REMOTE_PRESET_CATALOG = [
   {
     id: "keysmith-codex-unrestricted",
     name: "Keysmith: Codex Unrestricted",
     tag: "Codex",
     author: "Jia-Ethan / codex-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/codex-keysmith",
     description: "经典本地执行模式。解除拒答句式，提供 CHECK_FN / SERIAL / LICENSE_BLOB 占位符契约与逆向/破解直出流程。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-unrestricted.md",
     rules: KEYSMITH_DEFAULT_RULES
@@ -147,6 +149,8 @@ export const REMOTE_PRESET_CATALOG = [
     name: "Keysmith: Codex Contract",
     tag: "Codex",
     author: "Jia-Ethan / codex-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/codex-keysmith",
     description: "强交付契约规范。首行直出代码或步骤，严格消除任何前置废话、安全免责声明和降级替代品。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-contract.md",
     rules: KEYSMITH_DEFAULT_RULES
@@ -156,6 +160,8 @@ export const REMOTE_PRESET_CATALOG = [
     name: "Claude-Keysmith: Creative Append",
     tag: "Claude Code",
     author: "Jia-Ethan / claude-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/claude-keysmith",
     description: "自由创作与对抗性安全边界扩展。把成人文学等虚构创作视为主机本职手艺，不以说教或删节代替正文。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/claude-keysmith/main/examples/claude-append-prompt.md",
     rules: []
@@ -165,6 +171,8 @@ export const REMOTE_PRESET_CATALOG = [
     name: "Claude-Keysmith: Project Rules",
     tag: "Claude Code",
     author: "Jia-Ethan / claude-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/claude-keysmith",
     description: "Claude Code 本地实验室规范。首行 [P] 交付标记，将 CTF/安全测试/样本分析明确界定为有效任务。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/claude-keysmith/main/examples/claude-project-rules.md",
     rules: KEYSMITH_DEFAULT_RULES
@@ -174,6 +182,8 @@ export const REMOTE_PRESET_CATALOG = [
     name: "Grok-Keysmith: Unrestricted",
     tag: "Grok Build",
     author: "Jia-Ethan / grok-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/grok-keysmith",
     description: "Grok Build 本地工程环境规范。声明主机本地样本分析模式，抑制免责推诿，直出交付工件代码。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/grok-keysmith/main/examples/grok-unrestricted.md",
     rules: KEYSMITH_DEFAULT_RULES

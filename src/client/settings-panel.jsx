@@ -664,7 +664,7 @@ function ImportExportModal({
       <div className="dsh-inject-modal">
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
           <strong style={{ fontSize: 16 }}>
-            {targetPreset ? `规则管理（${targetPreset.name}）` : "预制库与规则导入 / 导出"}
+            {targetPreset ? `规则管理（${targetPreset.name}）` : "Keysmith 规则库与导入 / 导出"}
           </strong>
           <button type="button" className="ghost" onClick={onClose}>✕</button>
         </div>
@@ -675,7 +675,7 @@ function ImportExportModal({
             className={`inject-tab-btn ${tab === "hub" ? "active" : ""}`}
             onClick={() => setTab("hub")}
           >
-            ✨ 在线预制库 (Live Hub)
+            ✨ Keysmith 规则库
           </button>
           <button
             type="button"
@@ -706,11 +706,11 @@ function ImportExportModal({
           </div>
         )}
 
-        {/* Tab 1: 在线预制库（现场抓取） */}
+        {/* Tab 1: Keysmith 规则库（现场抓取） */}
         {tab === "hub" && (
           <div className="col" style={{ gap: 14 }}>
             <p className="hint-text" style={{ margin: 0 }}>
-              按需从 GitHub 官方源<strong>当场实时抓取</strong>最新指令与规约，不占用本地离线体积。点击任意项即可当场拉取并导入。
+              按需从 GitHub 官方源<strong>当场实时抓取</strong>最新指令与规约，遵循 MIT 开源许可规范，零内置冗余。点击任意项即可当场拉取并导入。
             </p>
 
             <div className="inject-hub-list">
@@ -722,10 +722,13 @@ function ImportExportModal({
                       <span className="inject-badge" style={{ background: "var(--inject-brand-bg)", color: "var(--inject-brand)" }}>
                         {meta.tag}
                       </span>
+                      <span className="inject-badge" style={{ background: "var(--inject-success-bg)", color: "var(--inject-success)", fontSize: 10 }}>
+                        {meta.license}
+                      </span>
                     </div>
                     <div className="inject-hub-desc">{meta.description}</div>
                     <div className="inject-hub-meta">
-                      来源: {meta.author} · 配套规则: {meta.rules.length} 条
+                      来源: <a href={meta.repo} target="_blank" rel="noreferrer" title="访问上游 GitHub 开源仓库">{meta.author}</a> · 配套规则: {meta.rules.length} 条
                     </div>
                   </div>
                   <div className="row" style={{ flexShrink: 0 }}>
@@ -938,7 +941,7 @@ export function SettingsPanel({ scope }) {
             className="primary sm"
             onClick={() => setModalState({ open: true, targetPreset: null })}
           >
-            📦 预制库与导入/导出
+            📦 Keysmith 规则库与导入/导出
           </button>
         </div>
       </div>
@@ -995,7 +998,7 @@ export function SettingsPanel({ scope }) {
                   className="primary"
                   onClick={() => setModalState({ open: true, targetPreset: null })}
                 >
-                  打开在线预制库并载入
+                  打开 Keysmith 规则库并载入
                 </button>
                 <button
                   type="button"

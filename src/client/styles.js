@@ -1,7 +1,7 @@
 /**
  * dsh-inject 设置页与现场 dialog 共享的高级样式体系。
  * 遵循 DSH 规范，深度适配浅色/深色模式（高对比度 + 层次丰富），
- * 提供精致的微交互、动画、状态指示与响应式布局。
+ * 对各类按钮（Primary/Ghost/Default/Danger）提供强制高对比度防护，杜绝任何白底白字或反色不可见。
  */
 
 const STYLE_ID = "dsh-inject-style";
@@ -15,15 +15,19 @@ const CSS = `
   --inject-bg-modal: var(--dsw-specific-menu, var(--dsw-alias-bg-layer-1, #ffffff));
   --inject-border: var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.12));
   --inject-border-subtle: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.06));
-  --inject-border-focus: var(--dsw-alias-state-business-primary, var(--dsw-alias-brand-primary, #4a6cf7));
+  --inject-border-focus: #2563eb;
   
   --inject-text-primary: var(--dsw-alias-label-primary, #111827);
   --inject-text-secondary: var(--dsw-alias-label-secondary, #4b5563);
   --inject-text-tertiary: var(--dsw-alias-label-tertiary, #9ca3af);
 
-  --inject-brand: var(--dsw-alias-brand-primary, #3b82f6);
-  --inject-brand-bg: rgba(59, 130, 246, 0.1);
-  --inject-brand-hover: rgba(59, 130, 246, 0.18);
+  --inject-brand: #2563eb;
+  --inject-brand-bg: rgba(37, 99, 235, 0.1);
+  --inject-brand-hover: rgba(37, 99, 235, 0.18);
+
+  --inject-btn-bg: #f3f4f6;
+  --inject-btn-hover: #e5e7eb;
+  --inject-btn-text: #111827;
 
   --inject-success: #10b981;
   --inject-success-bg: rgba(16, 185, 129, 0.12);
@@ -34,64 +38,69 @@ const CSS = `
   --inject-purple: #8b5cf6;
   --inject-purple-bg: rgba(139, 92, 246, 0.12);
 
-  --inject-btn-bg: var(--dsw-alias-bg-layer-2, #f3f4f6);
-  --inject-btn-hover: var(--dsw-alias-interactive-bg-hover, #e5e7eb);
-
   color: var(--inject-text-primary);
   font-family: var(--dsw-font-family, system-ui, -apple-system, sans-serif);
   line-height: 1.5;
   box-sizing: border-box;
 }
 
-body[data-ds-dark-theme] .dsh-inject {
-  --inject-bg-base: var(--dsw-alias-bg-base, #111215);
-  --inject-bg-card: var(--dsw-alias-bg-layer-1, #18191e);
-  --inject-bg-subcard: var(--dsw-alias-bg-layer-2, #212329);
-  --inject-bg-input: var(--dsw-alias-bg-layer-3, #292c34);
-  --inject-bg-modal: var(--dsw-specific-menu, var(--dsw-alias-bg-layer-2, #1f2026));
-  --inject-border: var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.14));
-  --inject-border-subtle: var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.08));
+/* 深色模式深色调优：强制确保暗底浅字，主按钮稳固为科技蓝白字 */
+body[data-ds-dark-theme] .dsh-inject,
+[data-ds-dark-theme] .dsh-inject {
+  --inject-bg-base: #111215;
+  --inject-bg-card: #18191e;
+  --inject-bg-subcard: #212329;
+  --inject-bg-input: #282a32;
+  --inject-bg-modal: #1c1d22;
+  --inject-border: rgba(255, 255, 255, 0.14);
+  --inject-border-subtle: rgba(255, 255, 255, 0.08);
+  --inject-border-focus: #3b82f6;
 
-  --inject-text-primary: var(--dsw-alias-label-primary, #f9fafb);
-  --inject-text-secondary: var(--dsw-alias-label-secondary, #d1d5db);
-  --inject-text-tertiary: var(--dsw-alias-label-tertiary, #9ca3af);
+  --inject-text-primary: #f9fafb;
+  --inject-text-secondary: #d1d5db;
+  --inject-text-tertiary: #9ca3af;
 
+  --inject-brand: #3b82f6;
   --inject-brand-bg: rgba(59, 130, 246, 0.22);
   --inject-brand-hover: rgba(59, 130, 246, 0.32);
+
+  --inject-btn-bg: #282a32;
+  --inject-btn-hover: #333640;
+  --inject-btn-text: #f9fafb;
 
   --inject-success-bg: rgba(16, 185, 129, 0.22);
   --inject-warning-bg: rgba(245, 158, 11, 0.22);
   --inject-danger-bg: rgba(239, 68, 68, 0.22);
   --inject-purple-bg: rgba(139, 92, 246, 0.22);
-
-  --inject-btn-bg: var(--dsw-alias-bg-layer-2, #24262d);
-  --inject-btn-hover: var(--dsw-alias-interactive-bg-hover, #2f323c);
 }
 
 @media (prefers-color-scheme: dark) {
   body:not([data-ds-dark-theme="false"]) .dsh-inject {
-    --inject-bg-base: var(--dsw-alias-bg-base, #111215);
-    --inject-bg-card: var(--dsw-alias-bg-layer-1, #18191e);
-    --inject-bg-subcard: var(--dsw-alias-bg-layer-2, #212329);
-    --inject-bg-input: var(--dsw-alias-bg-layer-3, #292c34);
-    --inject-bg-modal: var(--dsw-specific-menu, var(--dsw-alias-bg-layer-2, #1f2026));
-    --inject-border: var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.14));
-    --inject-border-subtle: var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.08));
+    --inject-bg-base: #111215;
+    --inject-bg-card: #18191e;
+    --inject-bg-subcard: #212329;
+    --inject-bg-input: #282a32;
+    --inject-bg-modal: #1c1d22;
+    --inject-border: rgba(255, 255, 255, 0.14);
+    --inject-border-subtle: rgba(255, 255, 255, 0.08);
+    --inject-border-focus: #3b82f6;
 
-    --inject-text-primary: var(--dsw-alias-label-primary, #f9fafb);
-    --inject-text-secondary: var(--dsw-alias-label-secondary, #d1d5db);
-    --inject-text-tertiary: var(--dsw-alias-label-tertiary, #9ca3af);
+    --inject-text-primary: #f9fafb;
+    --inject-text-secondary: #d1d5db;
+    --inject-text-tertiary: #9ca3af;
 
+    --inject-brand: #3b82f6;
     --inject-brand-bg: rgba(59, 130, 246, 0.22);
     --inject-brand-hover: rgba(59, 130, 246, 0.32);
+
+    --inject-btn-bg: #282a32;
+    --inject-btn-hover: #333640;
+    --inject-btn-text: #f9fafb;
 
     --inject-success-bg: rgba(16, 185, 129, 0.22);
     --inject-warning-bg: rgba(245, 158, 11, 0.22);
     --inject-danger-bg: rgba(239, 68, 68, 0.22);
     --inject-purple-bg: rgba(139, 92, 246, 0.22);
-
-    --inject-btn-bg: var(--dsw-alias-bg-layer-2, #24262d);
-    --inject-btn-hover: var(--dsw-alias-interactive-bg-hover, #2f323c);
   }
 }
 
@@ -103,7 +112,7 @@ body[data-ds-dark-theme] .dsh-inject {
 .dsh-inject .grow { flex: 1 1 0; min-width: 0; }
 .dsh-inject .shrink-0 { flex-shrink: 0; }
 
-/* 头部与状态栏 */
+/* 头部 */
 .dsh-inject .inject-header {
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
@@ -113,24 +122,6 @@ body[data-ds-dark-theme] .dsh-inject {
   display: flex; align-items: center; gap: 8px; margin: 0;
   font-size: 20px; font-weight: 700; color: var(--inject-text-primary);
 }
-.dsh-inject .inject-status-pill {
-  display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
-  padding: 3px 8px; border-radius: 12px; font-weight: 500;
-  background: var(--inject-bg-subcard); border: 1px solid var(--inject-border-subtle);
-  color: var(--inject-text-secondary);
-}
-.dsh-inject .status-dot {
-  width: 6px; height: 6px; border-radius: 50%; display: inline-block;
-}
-.dsh-inject .status-dot.saved { background: var(--inject-success); box-shadow: 0 0 6px var(--inject-success); }
-.dsh-inject .status-dot.saving { background: var(--inject-brand); animation: inject-pulse 1s infinite alternate; }
-.dsh-inject .status-dot.dirty { background: var(--inject-warning); }
-
-@keyframes inject-pulse {
-  from { opacity: 0.4; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1.2); }
-}
-
 .dsh-inject .inject-desc {
   font-size: 13px; color: var(--inject-text-secondary); margin: 0; max-width: 640px;
 }
@@ -144,15 +135,15 @@ body[data-ds-dark-theme] .dsh-inject {
 .dsh-inject .inject-tab-btn {
   display: flex; align-items: center; gap: 6px; padding: 6px 14px;
   font-size: 13px; font-weight: 500; border-radius: 6px; border: none;
-  background: transparent; color: var(--inject-text-secondary); cursor: pointer;
+  background: transparent !important; color: var(--inject-text-secondary) !important; cursor: pointer;
   transition: all 0.15s ease; white-space: nowrap;
 }
 .dsh-inject .inject-tab-btn:hover {
-  color: var(--inject-text-primary); background: rgba(125, 125, 125, 0.08);
+  color: var(--inject-text-primary) !important; background: rgba(125, 125, 125, 0.1) !important;
 }
 .dsh-inject .inject-tab-btn.active {
-  color: var(--inject-text-primary); background: var(--inject-bg-base);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); font-weight: 600;
+  color: var(--inject-text-primary) !important; background: var(--inject-bg-card) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); font-weight: 600;
 }
 .dsh-inject .inject-badge {
   font-size: 11px; padding: 1px 6px; border-radius: 10px;
@@ -279,37 +270,65 @@ body[data-ds-dark-theme] .dsh-inject {
   background: var(--inject-bg-modal); color: var(--inject-text-primary);
 }
 
-/* 按钮规范 */
+/* ==========================================================================
+   按钮体系规范：坚不可摧的高对比度，杜绝任何白底白字
+   ========================================================================== */
 .dsh-inject button {
   font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px;
   border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center;
-  justify-content: center; gap: 6px; border: 1px solid var(--inject-border);
-  background: var(--inject-btn-bg); color: var(--inject-text-primary);
+  justify-content: center; gap: 6px;
+  border: 1px solid var(--inject-border);
+  background: var(--inject-btn-bg);
+  color: var(--inject-btn-text);
   transition: all 0.15s ease; white-space: nowrap; user-select: none;
 }
 .dsh-inject button:hover:not(:disabled) {
-  background: var(--inject-btn-hover); border-color: var(--inject-border-focus);
+  background: var(--inject-btn-hover);
+  border-color: var(--inject-border-focus);
+  color: var(--inject-text-primary);
 }
+
+/* 核心 Primary 主按钮：无论深浅模式，永远保持高对比度科技蓝背景 + 纯白文字 */
 .dsh-inject button.primary {
-  background: var(--inject-brand); border-color: var(--inject-brand); color: #ffffff;
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
   font-weight: 600;
 }
-.dsh-inject button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.dsh-inject button.primary:hover:not(:disabled) {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+/* 幽灵按钮 Ghost */
 .dsh-inject button.ghost {
-  border-color: transparent; background: transparent; color: var(--inject-text-secondary);
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--inject-text-secondary) !important;
 }
 .dsh-inject button.ghost:hover:not(:disabled) {
-  background: var(--inject-btn-hover); color: var(--inject-text-primary);
+  background: var(--inject-btn-hover) !important;
+  color: var(--inject-text-primary) !important;
 }
+
+/* 危险操作与二次确认 */
 .dsh-inject button.danger {
-  color: var(--inject-danger); border-color: transparent; background: transparent;
+  color: var(--inject-danger) !important;
+  border-color: transparent !important;
+  background: transparent !important;
 }
 .dsh-inject button.danger:hover:not(:disabled) {
-  background: var(--inject-danger-bg); border-color: var(--inject-danger);
+  background: var(--inject-danger-bg) !important;
+  border-color: var(--inject-danger) !important;
 }
 .dsh-inject button.danger-confirm {
-  background: var(--inject-danger); border-color: var(--inject-danger); color: #ffffff; font-weight: 600;
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 600;
 }
+
 .dsh-inject button.sm { padding: 3px 8px; font-size: 12px; border-radius: 4px; }
 .dsh-inject button:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -326,12 +345,6 @@ body[data-ds-dark-theme] .dsh-inject {
   border: 1px solid var(--inject-border); border-radius: 12px;
   background: var(--inject-bg-card); padding: 18px;
 }
-.dsh-inject .inject-diff-view {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;
-}
-@media (max-width: 680px) {
-  .dsh-inject .inject-diff-view { grid-template-columns: 1fr; }
-}
 .dsh-inject .inject-diff-col {
   border: 1px solid var(--inject-border); border-radius: 8px;
   background: var(--inject-bg-input); padding: 12px; min-height: 120px;
@@ -339,7 +352,7 @@ body[data-ds-dark-theme] .dsh-inject {
   white-space: pre-wrap; word-break: break-all;
 }
 
-/* 在线预制库卡片 */
+/* Keysmith 规则库卡片列表 */
 .dsh-inject .inject-hub-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
 .dsh-inject .inject-hub-card {
   border: 1px solid var(--inject-border); border-radius: 8px;
@@ -354,18 +367,20 @@ body[data-ds-dark-theme] .dsh-inject {
 .dsh-inject .inject-hub-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dsh-inject .inject-hub-title { font-size: 14px; font-weight: 600; color: var(--inject-text-primary); }
 .dsh-inject .inject-hub-desc { font-size: 12px; color: var(--inject-text-secondary); line-height: 1.45; }
-.dsh-inject .inject-hub-meta { font-size: 11px; color: var(--inject-text-tertiary); font-family: ui-monospace, monospace; }
+.dsh-inject .inject-hub-meta { font-size: 11px; color: var(--inject-text-tertiary); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dsh-inject .inject-hub-meta a { color: var(--inject-brand); text-decoration: none; }
+.dsh-inject .inject-hub-meta a:hover { text-decoration: underline; }
 
 /* 模态框通用 */
 .dsh-inject-mask {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px);
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 16px;
 }
 .dsh-inject-modal {
   background: var(--inject-bg-modal); color: var(--inject-text-primary);
   border: 1px solid var(--inject-border); border-radius: 12px;
   width: min(780px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
 }
 `;
 
