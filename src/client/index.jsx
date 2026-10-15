@@ -5,6 +5,7 @@
  *
  * 不在输入栏放按钮：`/inject-turn` 的裸调用通过 commandUi 装饰触发客户端
  * 回调，翻转会话开关，浮层组件据此渲染 dialog。
+ * 注入结果本身不进这里——它由宿主命令生命周期在会话里落成一条可折叠行。
  */
 
 import React from "react";

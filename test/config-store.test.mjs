@@ -22,14 +22,17 @@ test("config-store: cloneRule and clonePreset generate unique ids and copy suffi
   const preset = {
     ...emptyPreset(),
     name: "主预设",
+    defaultEnabled: true,
     rules: [rule],
     turns: [{ role: "system", text: "sys" }]
   };
   const clonedP = clonePreset(preset);
   assert.notEqual(clonedP.id, preset.id);
   assert.equal(clonedP.name, "主预设 (副本)");
+  assert.equal(clonedP.defaultEnabled, true);
   assert.notEqual(clonedP.rules[0].id, rule.id);
   assert.equal(clonedP.turns[0].text, "sys");
+  assert.equal(emptyPreset().defaultEnabled, false);
 });
 
 test("config-store: parseKeysmithRules supports single array and object wrapping", () => {

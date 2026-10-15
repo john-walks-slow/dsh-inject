@@ -32,43 +32,84 @@ const TURN_ROLES = [
 ];
 
 function useLocalConfig(scope) {
-  const [config, setConfig] = useState(() => readConfig(scope));
-  const latest = useRef(config);
-  const generation = useRef(0);
-  const settled = useRef(0);
-  const timer = useRef(null);
+  const [draft, setDraftState] = useState(() => readConfig(scope));
+  const [committed, setCommitted] = useState(draft);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const inFlight = useRef(false);
 
-  useEffect(() => scope.subscribe(() => {
-    if (settled.current !== generation.current) return;
-    const next = readConfig(scope);
-    latest.current = next;
-    setConfig(next);
-  }), [scope]);
+  const setDraft = useCallback(updater => {
+    setDraftState(current => typeof updater === "function" ? updater(current) : updater);
+    setError(null);
+  }, []);
 
-  useEffect(() => () => {
-    if (timer.current === null) return;
-    clearTimeout(timer.current);
-    timer.current = null;
-    void writeConfig(scope, latest.current).catch(() => undefined);
-  }, [scope]);
+  const save = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setSaving(true);
+    setError(null);
+    try {
+      await writeConfig(scope, draft);
+      setCommitted(draft);
+    } catch (e) {
+      setError(String(e?.message ?? e));
+    } finally {
+      inFlight.current = false;
+      setSaving(false);
+    }
+  }, [scope, draft]);
 
-  const commit = useCallback(updater => {
-    const next = typeof updater === "function" ? updater(latest.current) : updater;
-    latest.current = next;
-    setConfig(next);
+  const discard = useCallback(() => {
+    setDraftState(committed);
+    setError(null);
+  }, [committed]);
 
-    const gen = ++generation.current;
-    if (timer.current) clearTimeout(timer.current);
+  const dirty = !sameConfig(draft, committed);
 
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      void writeConfig(scope, latest.current)
-        .catch(() => undefined)
-        .finally(() => { settled.current = gen; });
-    }, 300);
-  }, [scope]);
+  return { draft, setDraft, dirty, save, discard, saving, error };
+}
 
-  return [config, commit];
+function sameConfig(a, b) {
+  return JSON.stringify(stripForCompare(a)) === JSON.stringify(stripForCompare(b));
+}
+
+function stripForCompare(c) {
+  return {
+    presets: (c?.presets ?? []).map(p => ({ ...p, rules: [...(p.rules ?? [])], turns: [...(p.turns ?? [])] })),
+    templates: (c?.templates ?? []).map(t => ({ ...t, messages: [...(t.messages ?? [])] }))
+  };
+}
+
+function SaveStatus({ dirty, saving, error, onSave, onDiscard }) {
+  if (error) {
+    return (
+      <div className="inject-save-status error">
+        <span className="inject-save-state">保存失败：{error}</span>
+        <button type="button" className="sm" onClick={onSave}>重试</button>
+      </div>
+    );
+  }
+  if (saving) {
+    return (
+      <div className="inject-save-status saving">
+        <span className="inject-save-state">保存中…</span>
+      </div>
+    );
+  }
+  if (dirty) {
+    return (
+      <div className="inject-save-status dirty">
+        <span className="inject-save-state">有未保存的修改</span>
+        <button type="button" className="ghost sm" onClick={onDiscard}>放弃修改</button>
+        <button type="button" className="primary sm" onClick={onSave}>保存</button>
+      </div>
+    );
+  }
+  return (
+    <div className="inject-save-status">
+      <span className="inject-save-state saved">已保存</span>
+    </div>
+  );
 }
 
 function ConfirmButton({ label = "删除", confirmLabel = "确认删除？", onConfirm, className = "danger", size = "sm" }) {
@@ -319,6 +360,17 @@ function PresetCard({ preset, onChange, onRemove, onClone, onExport, onOpenImpor
         </div>
 
         <div className="row" style={{ gap: 8 }} onClick={e => e.stopPropagation()}>
+          <label
+            className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
+            title="勾选后所有会话默认启用本预设（会话内可 /inject off 单独关闭）"
+          >
+            <input
+              type="checkbox"
+              checked={preset.defaultEnabled === true}
+              onChange={e => patch({ defaultEnabled: e.target.checked })}
+            />
+            默认启用
+          </label>
           {preset.name && <CommandPill command={`/inject on ${preset.name}`} />}
           <button type="button" className="ghost sm" onClick={onClone} title="克隆预设">复制</button>
           <button type="button" className="ghost sm" onClick={onExport} title="导出 JSON">导出</button>
@@ -832,29 +884,29 @@ function ImportExportModal({
 }
 
 export function SettingsPanel({ scope }) {
-  const [config, commit] = useLocalConfig(scope);
+  const { draft, setDraft, dirty, save, discard, saving, error } = useLocalConfig(scope);
   const [activeTab, setActiveTab] = useState("presets");
   const [modalState, setModalState] = useState({ open: false, targetPreset: null });
 
-  const presets = config.presets ?? [];
-  const templates = config.templates ?? [];
+  const presets = draft.presets ?? [];
+  const templates = draft.templates ?? [];
 
   const patchPreset = (index, value) => {
-    commit(current => ({
+    setDraft(current => ({
       ...current,
       presets: current.presets.map((p, i) => (i === index ? value : p))
     }));
   };
 
   const patchTemplate = (index, value) => {
-    commit(current => ({
+    setDraft(current => ({
       ...current,
       templates: current.templates.map((t, i) => (i === index ? value : t))
     }));
   };
 
   const handleImportRules = (presetId, newRules, replace) => {
-    commit(current => ({
+    setDraft(current => ({
       ...current,
       presets: current.presets.map(p => {
         if (p.id !== presetId) return p;
@@ -867,18 +919,26 @@ export function SettingsPanel({ scope }) {
   };
 
   const handleImportPresets = (newPresets, replace) => {
-    commit(current => ({
+    setDraft(current => ({
       ...current,
       presets: replace ? newPresets : [...current.presets, ...newPresets]
     }));
   };
 
   const handleAppendPreset = (newPreset) => {
-    commit(current => ({
+    setDraft(current => ({
       ...current,
       presets: [...current.presets, newPreset]
     }));
   };
+
+  // 离开页面前提示未保存改动
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const handler = e => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
 
   return (
     <section className="dsh-inject" style={{ padding: "16px 8px", maxWidth: 960 }}>
@@ -890,7 +950,8 @@ export function SettingsPanel({ scope }) {
           </p>
         </div>
 
-        <div className="row" style={{ gap: 8 }}>
+        <div className="inject-save-bar">
+          <SaveStatus dirty={dirty} saving={saving} error={error} onSave={save} onDiscard={discard} />
           <button
             type="button"
             className="primary sm"
@@ -931,12 +992,12 @@ export function SettingsPanel({ scope }) {
         <div className="col" style={{ gap: 12 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
             <span className="hint-text">
-              在会话中输入 <code>/inject on 预设名</code> 即可实时启用，输入 <code>/inject off</code> 关闭。
+              在会话中输入 <code>/inject on 预设名</code> 启用、<code>/inject off</code> 关闭；标记「默认启用」的预设对所有会话生效。
             </span>
             <button
               type="button"
               className="primary sm"
-              onClick={() => commit(current => ({ ...current, presets: [...current.presets, emptyPreset()] }))}
+              onClick={() => setDraft(current => ({ ...current, presets: [...current.presets, emptyPreset()] }))}
             >
               ＋ 新建预设
             </button>
@@ -955,7 +1016,7 @@ export function SettingsPanel({ scope }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => commit(current => ({ ...current, presets: [emptyPreset()] }))}
+                  onClick={() => setDraft(current => ({ ...current, presets: [emptyPreset()] }))}
                 >
                   创建空白预设
                 </button>
@@ -969,12 +1030,12 @@ export function SettingsPanel({ scope }) {
               preset={preset}
               defaultOpen={index === 0}
               onChange={value => patchPreset(index, value)}
-              onRemove={() => commit(current => ({ ...current, presets: current.presets.filter((_, i) => i !== index) }))}
+              onRemove={() => setDraft(current => ({ ...current, presets: current.presets.filter((_, i) => i !== index) }))}
               onClone={() => {
                 const cloned = clonePreset(preset);
                 const nextPresets = [...presets];
                 nextPresets.splice(index + 1, 0, cloned);
-                commit(current => ({ ...current, presets: nextPresets }));
+                setDraft(current => ({ ...current, presets: nextPresets }));
               }}
               onExport={() => setModalState({ open: true, targetPreset: preset })}
               onOpenImport={() => setModalState({ open: true, targetPreset: preset })}
@@ -992,7 +1053,7 @@ export function SettingsPanel({ scope }) {
             <button
               type="button"
               className="primary sm"
-              onClick={() => commit(current => ({ ...current, templates: [...current.templates, emptyTemplate()] }))}
+              onClick={() => setDraft(current => ({ ...current, templates: [...current.templates, emptyTemplate()] }))}
             >
               ＋ 新建模板
             </button>
@@ -1009,12 +1070,12 @@ export function SettingsPanel({ scope }) {
               key={template.id ?? index}
               template={template}
               onChange={value => patchTemplate(index, value)}
-              onRemove={() => commit(current => ({ ...current, templates: current.templates.filter((_, i) => i !== index) }))}
+              onRemove={() => setDraft(current => ({ ...current, templates: current.templates.filter((_, i) => i !== index) }))}
               onClone={() => {
                 const cloned = cloneTemplate(template);
                 const nextTemplates = [...templates];
                 nextTemplates.splice(index + 1, 0, cloned);
-                commit(current => ({ ...current, templates: nextTemplates }));
+                setDraft(current => ({ ...current, templates: nextTemplates }));
               }}
             />
           ))}
@@ -1031,7 +1092,7 @@ export function SettingsPanel({ scope }) {
         onClose={() => setModalState({ open: false, targetPreset: null })}
         onImportRules={handleImportRules}
         onImportPresets={handleImportPresets}
-        allConfig={config}
+        allConfig={draft}
         onAppendPreset={handleAppendPreset}
       />
     </section>

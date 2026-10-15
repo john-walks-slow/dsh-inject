@@ -35,7 +35,7 @@ export function emptyTurn(role = "user") {
 }
 
 export function emptyPreset() {
-  return { id: newId("preset"), name: "新预设", description: "", rules: [], turns: [] };
+  return { id: newId("preset"), name: "新预设", description: "", defaultEnabled: false, rules: [], turns: [] };
 }
 
 export function emptyTemplate(name = "新模板") {

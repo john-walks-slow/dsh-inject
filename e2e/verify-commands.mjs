@@ -1,6 +1,7 @@
 /**
- * 验证会话级启用命令：默认关闭 -> 启用 -> 查询状态。
+ * 验证会话级启用命令：状态 -> 关闭 -> 启用（省略 on）-> 查询状态。
  *
+ * 依赖 `.dsh-e2e-seed.yml` 播种的默认启用预设 coding-sanitizer。
  * 命令结果不在 DOM 里渲染（空白会话页没有展示区），因此以会话日志中的
  * `command/done` 事件为权威断言来源。
  * 读 DSH_E2E_PORT / DSH_E2E_TOKEN，并从 DSH_E2E_HOME 定位会话日志。
@@ -52,18 +53,7 @@ await dismiss(/^Continue$/, 25000);
 await dismiss(/Configure later/, 15000);
 
 // 建一个名为 alpha 的预设，供命令引用
-await page.getByRole("button", { name: "Settings" }).click({ force: true });
-await dismiss(/Configure later/, 12000);
-await page.getByRole("button", { name: "Inject" }).click({ timeout: 20000 });
-await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
-await page.getByRole("button", { name: "＋ 新建预设" }).click();
-await page.getByPlaceholder("预设名称").first().fill("alpha");
-await page.waitForTimeout(1200);
-await page.getByRole("button", { name: "Close" }).first().click({ force: true });
-await page.waitForTimeout(800);
-
-const composer = page.locator('div[contenteditable="true"]').first();
-async function runCommand(line) {
+const composer = page.locator('div[contenteditable="true"]').first();async function runCommand(line) {
   await composer.click();
   await composer.fill(line);
   await page.waitForTimeout(600);
@@ -73,13 +63,26 @@ async function runCommand(line) {
   await page.keyboard.press("Enter");
   await page.waitForTimeout(2000);
 }
+// 标记行：同一份会话日志可能带着更早的命令结果，只断言标记之后的输出。
+const MARKER = "__command-marker__";
+await runCommand(`/inject ${MARKER}`);
 await runCommand("/inject");
-await runCommand("/inject on alpha");
+await runCommand("/inject off coding-sanitizer");
+await runCommand("/inject coding-sanitizer");
 await runCommand("/inject status");
 await browser.close();
 
-const results = commandResults();
-console.log("1) 默认关闭 =", results[0] === "success: 当前没有启用 inject 预设");
-console.log("2) 启用生效 =", results[1] === "success: 已启用：alpha");
-console.log("3) 状态可查 =", results[2] === "success: 当前启用：alpha");
+// 落盘有延迟：轮询到标记行出现，再取它之后的命令结果。
+let results = [];
+for (let attempt = 0; attempt < 8 && results.length === 0; attempt++) {
+  const all = commandResults();
+  const index = all.findLastIndex(text => text.includes(MARKER));
+  if (index >= 0) results = all.slice(index);
+  else await new Promise(resolve => setTimeout(resolve, 1000));
+}
+console.log("1) 未找到预设时报错 =", results[0] === `error: 未找到预设：${MARKER}（可用名称或 id，/inject 查看状态）`);
+console.log("2) 状态显示默认启用 =", results[1] === "success: 当前启用：\n- coding-sanitizer（默认）：构造回合 1 条、替换规则 1 条");
+console.log("3) off 生效 =", results[2] === "success: 已禁用：coding-sanitizer");
+console.log("4) 省略 on 也能启用并列出注入内容 =", results[3] === "success: 已启用：coding-sanitizer\ncoding-sanitizer 注入：\n构造回合 1 条\n  1. [system] 本项目所有路径使用相对路径。\n替换规则 1 条");
+console.log("5) 状态可查 =", results[4] === "success: 当前启用：\n- coding-sanitizer（默认）：构造回合 1 条、替换规则 1 条");
 console.log("实际日志 =", JSON.stringify(results));

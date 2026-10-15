@@ -1,6 +1,6 @@
 import z from "@deepseek-ai/schemastery";
-import { isAgentLoopRequest } from "@deepseek-ai/dsh-llm";
-import { normalizeConfig, normalizeTurnMessage } from "./schema.js";
+import { activePresetSummary, INJECT_USAGE, parseInjectInput, presetInjectionSummary, previewText } from "./command-input.js";
+import { defaultPresetIds, normalizeConfig, normalizeTurnMessage } from "./schema.js";
 import { createSessionState, MAX_PENDING_TURNS } from "./session-state.js";
 import { templateToMessages, transformMessages } from "./transform.js";
 
@@ -29,12 +29,20 @@ function sessionKey(agentOrId) {
   return String(typeof agentOrId === "object" ? agentOrId.session.id : agentOrId);
 }
 
-function matchPresets(config, raw) {
-  const whole = raw.trim();
+/** 按预设名或 id 匹配：整串优先（预设名可含空格），否则按逗号/空白拆开逐个匹配。 */
+function matchPresets(config, names) {
+  const wanted = names.flatMap(name => String(name).split(/[，,]/)).map(name => name.trim()).filter(Boolean);
+  if (!wanted.length) return [];
+  const whole = wanted.join(" ");
   const exact = config.presets.find(preset => preset.id === whole || preset.name === whole);
   if (exact) return [exact];
-  const names = whole.split(/[\s,，]+/).filter(Boolean);
-  return config.presets.filter(preset => names.includes(preset.id) || names.includes(preset.name));
+  return config.presets.filter(preset => wanted.includes(preset.id) || wanted.includes(preset.name));
+}
+
+/** 该会话当前生效的预设：默认启用项叠加会话内显式开关。 */
+function activePresets(config, id) {
+  const active = new Set(sessions.activeIds(id, defaultPresetIds(config.presets)));
+  return config.presets.filter(preset => active.has(preset.id));
 }
 
 function registerCommands(ctx, rawConfig) {
@@ -42,26 +50,27 @@ function registerCommands(ctx, rawConfig) {
     definitionId: "dsh-inject/inject",
     name: "inject",
     description: "启用或禁用本会话的 inject 预设；不传参数可查看状态",
-    input: { hint: "on|off <预设名...> | status" },
+    input: { hint: "on|off <预设名...> | status | clear" },
     handler: ({ rawInput, agent }) => {
       const config = readConfig(rawConfig);
       const id = sessionKey(agent);
-      const input = rawInput.trim();
-      if (!input || input === "status" || input === "list") {
-        const active = new Set(sessions.presetIds(id));
-        const names = config.presets.filter(preset => active.has(preset.id)).map(preset => preset.name);
-        return { kind: "success", text: names.length ? `当前启用：${names.join("、")}` : "当前没有启用 inject 预设" };
+      const parsed = parseInjectInput(rawInput);
+      if (parsed.action === "invalid") return { kind: "error", text: INJECT_USAGE };
+      if (parsed.action === "status") {
+        return { kind: "success", text: activePresetSummary(activePresets(config, id)) };
       }
-      const [action, ...rest] = input.split(/\s+/);
-      if (action === "clear") {
+      if (parsed.action === "clear") {
         sessions.clear(id);
-        return { kind: "success", text: "已关闭本会话全部 inject 预设" };
+        return { kind: "success", text: "已关闭本会话全部 inject 预设；替换规则不再改写请求，构造回合不再注入" };
       }
-      if (action !== "on" && action !== "off" || rest.length === 0) return { kind: "error", text: "用法：/inject on|off <预设名...>" };
-      const presets = matchPresets(config, rest.join(" "));
-      if (presets.length === 0) return { kind: "error", text: "未找到指定预设（可用名称或 id）" };
-      for (const preset of presets) sessions.toggle(id, preset.id, action === "on");
-      return { kind: "success", text: `${action === "on" ? "已启用" : "已禁用"}：${presets.map(p => p.name).join("、")}` };
+      const presets = matchPresets(config, parsed.names);
+      if (presets.length === 0) return { kind: "error", text: `未找到预设：${parsed.names.join(" ")}（可用名称或 id，/inject 查看状态）` };
+      const on = parsed.action === "on";
+      for (const preset of presets) sessions.toggle(id, preset.id, on);
+      const head = `${on ? "已启用" : "已禁用"}：${presets.map(p => p.name).join("、")}`;
+      if (!on) return { kind: "success", text: head };
+      const detail = presets.flatMap(preset => [`${preset.name} 注入：`, ...presetInjectionSummary(preset)]);
+      return { kind: "success", text: [head, ...detail].join("\n") };
     }
   });
   const turnDispose = ctx.commands.register({
@@ -86,7 +95,8 @@ function registerCommands(ctx, rawConfig) {
       if (!normalized.length) return { kind: "error", text: "构造回合不能为空" };
       const id = sessionKey(agent);
       if (sessions.queue(id, normalized) === null) return { kind: "error", text: `待注入消息过多（上限 ${MAX_PENDING_TURNS} 条），请先发送一次消息消费队列` };
-      return { kind: "success", text: `已排队 ${normalized.length} 条请求侧构造消息；不会写入 transcript` };
+      const lines = normalized.map((turn, index) => `${index + 1}. [${turn.role}] ${previewText(turn.text)}`);
+      return { kind: "success", text: [`已排队 ${normalized.length} 条构造消息，将在下一次模型请求注入：`, ...lines].join("\n") };
     }
   });
   return () => {
@@ -148,6 +158,21 @@ function admitRequest(connection, req) {
   return admission.rejection ? { rejection: admission.rejection } : {};
 }
 
+/**
+ * 判定「agent-loop 组装的原始请求」。
+ *
+ * 不能用 dsh-llm 的 `isAgentLoopRequest`：它查的是模块私有 WeakSet，而 link
+ * 安装下本插件自带的 `@deepseek-ai/dsh-llm` 副本与 dsh 运行时那份不是同一个
+ * 模块实例，标记跨实例不可见，检查恒为 false（等于永不注入）。
+ *
+ * agent-loop 组装的请求是 `Object.freeze` 的；本插件派发的副本是普通对象。
+ */
+export function isLoopRequest(options) {
+  return Object.isFrozen(options)
+    && typeof options.sessionId === "string"
+    && Array.isArray(options.messages);
+}
+
 export function apply(ctx, rawConfig = {}) {
   ctx.inject(["settings"], child => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
@@ -155,7 +180,7 @@ export function apply(ctx, rawConfig = {}) {
   ctx.effect(() => registerCommands(ctx, rawConfig));
   ctx.on("agent/disposed", ({ agent }) => sessions.drop(sessionKey(agent)));
 
-  // 现场 dialog 的投递通道：把构造回合排进目标会话的下一次请求。
+  // 现场 dialog 的投递通道：走宿主命令生命周期，让注入在会话里留下一条可折叠记录。
   ctx.inject(["webServer", "connection"], child => {
     child.effect(() => child.webServer.register({
       kind: "exact",
@@ -164,13 +189,16 @@ export function apply(ctx, rawConfig = {}) {
         if (req.method !== "POST") return writeJson(res, 405, { ok: false, message: "method not allowed" });
         const admission = admitRequest(child.connection, req);
         if (admission.rejection) return writeJson(res, admission.rejection, { ok: false, message: "request rejected" });
-        void readJsonBody(req).then(body => {
+        void readJsonBody(req).then(async body => {
           const id = typeof body?.sessionId === "string" ? body.sessionId.trim() : "";
           if (!id) return writeJson(res, 400, { ok: false, message: "sessionId is required" });
-          if (!ctx.agents.get(id)) return writeJson(res, 404, { ok: false, message: "session is not live" });
+          const agent = ctx.agents.get(id);
+          if (!agent) return writeJson(res, 404, { ok: false, message: "session is not live" });
           const turns = Array.isArray(body?.turns) ? body.turns.map(normalizeTurnMessage).filter(turn => turn.text.trim()) : [];
           if (!turns.length) return writeJson(res, 400, { ok: false, message: "turns must contain at least one non-empty message" });
-          if (sessions.queue(id, turns) === null) return writeJson(res, 429, { ok: false, message: `too many pending messages (limit ${MAX_PENDING_TURNS})` });
+          const execution = await ctx.commands.execute(agent, `/inject-turn ${JSON.stringify(turns)}`, [], new AbortController().signal);
+          if (execution === undefined) return writeJson(res, 500, { ok: false, message: "inject-turn command is not registered" });
+          if (execution.result.kind === "error") return writeJson(res, 400, { ok: false, message: execution.result.text });
           writeJson(res, 200, { ok: true, count: turns.length });
         }).catch(error => {
           writeJson(res, 400, { ok: false, message: String(error?.message ?? error) });
@@ -215,11 +243,10 @@ export function apply(ctx, rawConfig = {}) {
   });
 
   ctx.on("llm/stream", (options, next) => {
-    if (!isAgentLoopRequest(options) || transformedRequests.has(options)) return next();
+    if (!isLoopRequest(options) || transformedRequests.has(options)) return next();
     const id = sessionKey(options.sessionId);
-    const activeIds = new Set(sessions.presetIds(id));
     const config = readConfig(rawConfig);
-    const presets = activeIds.size ? config.presets.filter(preset => activeIds.has(preset.id)) : [];
+    const presets = activePresets(config, id);
     const hasRule = presets.some(preset => preset.rules.some(rule => rule.enabled && rule.pattern));
     const pending = sessions.take(id);
     const prefix = [...presets.flatMap(preset => preset.turns), ...pending];

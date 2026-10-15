@@ -112,6 +112,21 @@ body[data-ds-dark-theme] .dsh-inject,
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
 }
+.dsh-inject .inject-save-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dsh-inject .inject-save-status {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 12px; color: var(--inject-text-secondary);
+  background: var(--inject-bg-card);
+  border: 1px solid var(--inject-border);
+}
+.dsh-inject .inject-save-status.dirty {
+  border-color: var(--inject-brand);
+  background: var(--inject-brand-bg);
+}
+.dsh-inject .inject-save-status.error { border-color: #ef4444; color: #ef4444; }
+.dsh-inject .inject-save-state { font-weight: 500; }
+.dsh-inject .inject-save-state.saved { color: var(--inject-text-tertiary); }
 .dsh-inject .inject-title-group { display: flex; flex-direction: column; gap: 4px; }
 .dsh-inject .inject-main-title {
   display: flex; align-items: center; gap: 8px; margin: 0;
@@ -189,6 +204,20 @@ body[data-ds-dark-theme] .dsh-inject,
   padding: 16px; border-top: 1px solid var(--inject-border-subtle);
   background: var(--inject-bg-base);
 }
+
+/* 「默认启用」开关 */
+.dsh-inject .inject-default-toggle {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px;
+  font-size: 12px; font-weight: 500; border-radius: 4px; cursor: pointer;
+  border: 1px solid transparent; color: var(--inject-text-secondary);
+  user-select: none; transition: all 0.15s ease;
+}
+.dsh-inject .inject-default-toggle:hover { background: var(--inject-btn-hover); }
+.dsh-inject .inject-default-toggle.on {
+  background: var(--inject-brand-bg); border-color: var(--inject-brand);
+  color: var(--inject-brand); font-weight: 600;
+}
+.dsh-inject .inject-default-toggle input { margin: 0; accent-color: var(--inject-brand); cursor: pointer; }
 
 /* 子面板分组 */
 .dsh-inject .inject-section-title {
@@ -372,6 +401,25 @@ body[data-ds-dark-theme] .dsh-inject,
   width: min(780px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
 }
+
+/* dialog 里刚插入的内容 */
+.dsh-inject-queued {
+  list-style: none; margin: 10px 0 0; padding: 8px 10px;
+  border: 1px solid var(--inject-border-subtle); border-radius: 8px;
+  background: var(--inject-bg-card); max-height: 160px; overflow-y: auto;
+}
+.dsh-inject-queued li {
+  display: flex; gap: 8px; align-items: baseline; padding: 3px 0;
+  font-size: 12px; color: var(--inject-text-secondary);
+}
+.dsh-inject-queued-role {
+  flex: none; font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  background: var(--inject-bg-subcard); color: var(--inject-text-secondary);
+}
+.dsh-inject-queued-role.system { color: var(--inject-purple); background: var(--inject-purple-bg); }
+.dsh-inject-queued-role.assistant { color: var(--inject-brand); background: var(--inject-brand-bg); }
+.dsh-inject-queued-role.tool { color: var(--inject-warning); background: var(--inject-warning-bg); }
+.dsh-inject-queued li span:last-child { min-width: 0; white-space: pre-wrap; word-break: break-word; }
 `;
 
 export function injectStyles(doc = document) {

@@ -1,0 +1,48 @@
+# dsh-e2e 测试种子：注入预设 + 可用的 cpa LLM 路由。
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: cpa
+    model: medium
+
+- id: inject
+  name: dsh-inject
+  config:
+    presets:
+      - id: preset-coding-sanitizer
+        name: coding-sanitizer
+        description: 脱敏密钥并前置项目约定
+        defaultEnabled: true
+        rules:
+          - id: rule-api-key-redact
+            name: 屏蔽 API Key
+            enabled: true
+            targets:
+              - user
+            regex: true
+            pattern: sk-[A-Za-z0-9]{16,}
+            flags: g
+            replacement: <redacted-key>
+        turns:
+          - role: system
+            text: 本项目所有路径使用相对路径。
+
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      cpa:
+        apiKeyEnv: CPA_API_KEY
+        api: openai-completions
+        baseURL: http://127.0.0.1:9999/v1
+        models:
+          - id: medium
+            contextWindow: 512000
+            input:
+              - text
+              - image
+          - id: omni
+            contextWindow: 1000000
+            input:
+              - text
+              - image

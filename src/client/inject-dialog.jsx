@@ -1,6 +1,7 @@
 /**
- * 现场注入 dialog：在输入栏点「注入」打开，现场编辑构造回合，
- * 可载入/保存模板，确认后交给宿主排入下一次模型请求（不写入 transcript）。
+ * 现场注入 dialog：在输入栏输入 `/inject-turn` 回车打开，现场编辑构造回合，
+ * 可载入/保存模板；确认后交给宿主排入下一次模型请求（不写入 transcript），
+ * 会话里会落一条可折叠的注入记录行。
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -8,6 +9,9 @@ import { createPortal } from "react-dom";
 import { readConfig, writeConfig, emptyTemplate, emptyTurn } from "./config-store.js";
 
 const TURN_ROLES = [["system", "系统"], ["assistant", "助手"], ["user", "用户"], ["tool", "工具"]];
+const ROLE_LABELS = Object.fromEntries(TURN_ROLES);
+
+const roleLabel = role => ROLE_LABELS[role] ?? role;
 
 async function submitTurns(sessionId, turns) {
   const response = await fetch("/dsh-inject/turns", {
@@ -49,6 +53,7 @@ export function InjectDialog({ sessionId, scope, onClose }) {
   const [turns, setTurns] = useState(() => [emptyTurn()]);
   const [templateName, setTemplateName] = useState("");
   const [status, setStatus] = useState("");
+  const [queued, setQueued] = useState([]);
   const [busy, setBusy] = useState(false);
   const firstField = useRef(null);
   const [templates, setTemplates] = useState(() => readConfig(scope).templates);
@@ -69,7 +74,8 @@ export function InjectDialog({ sessionId, scope, onClose }) {
     setBusy(true);
     try {
       const body = await submitTurns(sessionId, usable);
-      setStatus(`已插入 ${body.count ?? usable.length} 条，将在下一次模型请求生效`);
+      setStatus(`已写入 ${body.count ?? usable.length} 条注入记录，将在下一次模型请求注入`);
+      setQueued(usable);
       setTurns([emptyTurn()]);
     } catch (error) {
       setStatus(`插入失败：${error.message}`);
@@ -111,7 +117,7 @@ export function InjectDialog({ sessionId, scope, onClose }) {
           <strong>插入构造回合</strong>
           <button type="button" className="ghost" onClick={onClose}>关闭</button>
         </div>
-        <p className="hint">这些消息只进入模型请求，出现在当前位置；会话记录和界面显示保持不变。</p>
+        <p className="hint">构造回合只进入模型请求，不改写会话记录；确认后会话里会留下一条可折叠的注入记录。</p>
 
         <div className="row" style={{ margin: "10px 0" }}>
           <select defaultValue="" onChange={event => { loadTemplate(event.target.value); event.target.value = ""; }}>
@@ -132,6 +138,13 @@ export function InjectDialog({ sessionId, scope, onClose }) {
           <span className="hint">{status}</span>
           <button type="button" className="primary" disabled={busy} onClick={insert}>插入到当前位置</button>
         </div>
+
+        {queued.length > 0 && <ul className="dsh-inject-queued">
+          {queued.map((turn, index) => <li key={index}>
+            <span className={`dsh-inject-queued-role ${turn.role}`}>{roleLabel(turn.role)}</span>
+            <span>{turn.text}</span>
+          </li>)}
+        </ul>}
       </div>
     </div>,
     document.body

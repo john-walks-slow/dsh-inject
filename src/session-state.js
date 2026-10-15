@@ -1,7 +1,9 @@
 /**
- * 会话级运行时状态：哪些预设被启用、哪些构造回合待注入。
+ * 会话级运行时状态：哪些预设生效、哪些构造回合待注入。
  *
- * 全部状态都是进程内、按 session id 分区，默认全空，不写入会话日志——
+ * 预设是否生效＝预设自己的「默认启用」叠加本会话的显式开关：显式 on/off 永远优先，
+ * `/inject clear` 让本会话对默认值免疫（此后只有显式 on 才生效）。
+ * 全部状态都是进程内、按 session id 分区，不写入会话日志——
  * 因此「打开又关闭预设」对会话记录零副作用。
  */
 
@@ -9,26 +11,35 @@
 export const MAX_PENDING_TURNS = 200;
 
 export function createSessionState() {
-  const enabled = new Map();
+  const overrides = new Map();
+  const cleared = new Set();
   const pending = new Map();
 
-  const presetIds = id => [...(enabled.get(id) ?? [])];
-
   return {
-    /** 该会话当前启用的预设 id（默认空）。 */
-    presetIds,
-
-    /** 启用/禁用某预设；禁用后集合为空即等同于「从未启用」。 */
-    toggle(id, presetId, on) {
-      const ids = enabled.get(id) ?? new Set();
-      on ? ids.add(presetId) : ids.delete(presetId);
-      ids.size ? enabled.set(id, ids) : enabled.delete(id);
-      return [...ids];
+    /**
+     * 该会话实际生效的预设 id，顺序为「默认启用」在前、显式启用在后。
+     * @param defaultIds 标记「默认启用」的预设 id，由配置按序给出。
+     */
+    activeIds(id, defaultIds = []) {
+      const explicit = overrides.get(id);
+      const active = cleared.has(id) ? [] : defaultIds.filter(presetId => explicit?.get(presetId) !== false);
+      for (const [presetId, on] of explicit ?? []) {
+        if (on && !active.includes(presetId)) active.push(presetId);
+      }
+      return active;
     },
 
-    /** 关闭该会话全部预设。 */
+    /** 显式启用/关闭某预设；关闭会覆盖该预设的「默认启用」。 */
+    toggle(id, presetId, on) {
+      const map = overrides.get(id) ?? new Map();
+      map.set(presetId, on);
+      overrides.set(id, map);
+    },
+
+    /** 关闭该会话全部预设，并让本会话不再自动吃「默认启用」。 */
     clear(id) {
-      enabled.delete(id);
+      overrides.delete(id);
+      cleared.add(id);
     },
 
     /**
@@ -52,7 +63,8 @@ export function createSessionState() {
 
     /** 会话结束时丢弃全部会话级状态。 */
     drop(id) {
-      enabled.delete(id);
+      overrides.delete(id);
+      cleared.delete(id);
       pending.delete(id);
     }
   };

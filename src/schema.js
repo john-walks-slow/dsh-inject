@@ -21,6 +21,7 @@ export const KEYSMITH_PRESET = {
   id: "keysmith-unrestricted",
   name: "Keysmith: Unrestricted",
   description: "Keysmith 本地执行规约与边界词替换，包含系统级指令与用户输入中性化映射",
+  defaultEnabled: false,
   rules: KEYSMITH_DEFAULT_RULES.map(r => ({
     id: `rule-ks-${r.from}`,
     name: `Keysmith: ${r.from}`,
@@ -120,9 +121,15 @@ export function normalizePreset(p) {
     id: typeof source.id === "string" && source.id ? source.id : `preset-${crypto.randomUUID().slice(0, 8)}`,
     name: typeof source.name === "string" && source.name ? source.name : "未命名预设",
     description: typeof source.description === "string" ? source.description : "",
+    defaultEnabled: source.defaultEnabled === true,
     rules: Array.isArray(source.rules) ? source.rules.map(normalizeRule) : [],
     turns: Array.isArray(source.turns) ? source.turns.map(normalizeTurnMessage).filter(m => m.text.trim()) : []
   };
+}
+
+/** 标记「默认启用」的预设 id，顺序即配置顺序；会话默认状态由它决定。 */
+export function defaultPresetIds(presets) {
+  return (presets ?? []).filter(preset => preset.defaultEnabled === true).map(preset => preset.id);
 }
 
 export function normalizeConfig(config) {

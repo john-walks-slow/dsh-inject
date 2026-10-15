@@ -25,8 +25,8 @@ async function dismiss(name, timeout = 8000) {
 await dismiss(/^Continue$/, 25000);
 await dismiss(/Configure later/, 15000);
 
-// 输入栏不应存在本插件的常驻按钮
-console.log("输入栏无「注入」按钮 =", await page.getByRole("button", { name: "注入" }).count() === 0);
+// 输入栏（composer 卡片）内不应存在本插件的常驻按钮；注入条是卡片外的独立指示器
+console.log("输入栏无「注入」按钮 =", await page.locator("[data-composer-card]").getByRole("button", { name: "注入" }).count() === 0);
 
 // 裸调用 /inject-turn：菜单接受即触发客户端装饰
 const composer = page.locator('div[contenteditable="true"]').first();
@@ -43,7 +43,7 @@ if (await dialog.isVisible().catch(() => false)) {
   await page.getByRole("button", { name: "插入到当前位置" }).click();
   await page.waitForTimeout(1500);
   const text = await page.locator(".dsh-inject-modal").innerText();
-  console.log("插入生效 =", /已插入 1 条/.test(text));
+  console.log("插入生效 =", /已写入 1 条注入记录/.test(text));
   await page.getByPlaceholder("这条消息的内容").first().fill("当前分支只做最小必要修改。");
   await page.waitForTimeout(400);
   await page.screenshot({ path: "shots/inject-dialog.png" });

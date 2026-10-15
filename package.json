@@ -7,7 +7,7 @@
   "type": "module",
   "main": "./lib/index.js",
   "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./cordis.patch.yml": "./cordis.patch.yml", "./package.json": "./package.json" },
-  "files": ["lib", "cordis.patch.yml", "README.md", "LICENSE"],
+  "files": ["lib", "cordis.patch.yml", "README.md", "README.en.md", "LICENSE"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/john-walks-slow/dsh-inject.git"
@@ -29,7 +29,7 @@
     "请求重写",
     "预设"
   ],
-  "scripts": { "build": "node scripts/build.mjs", "build:client": "node scripts/build-client.mjs", "check": "node --input-type=module -e \"await import('./lib/index.js')\" && node --check lib/client.js", "test": "node --test test/*.test.mjs", "e2e:commands": "dsh-e2e run e2e/verify-commands.mjs", "e2e:dialog": "dsh-e2e run e2e/verify-dialog.mjs", "e2e:shots": "dsh-e2e run e2e/screenshot-inject.mjs", "prepare": "npm run build" },
+  "scripts": { "build": "node scripts/build.mjs", "build:client": "node scripts/build-client.mjs", "check": "node --input-type=module -e \"await import('./lib/index.js')\" && node --check lib/client.js", "test": "node --test test/*.test.mjs", "e2e:commands": "dsh-e2e run e2e/verify-commands.mjs", "e2e:dialog": "dsh-e2e run e2e/verify-dialog.mjs", "e2e:row": "dsh-e2e run e2e/verify-inject-row.mjs", "e2e:defaults": "dsh-e2e run e2e/verify-default-enabled.mjs", "e2e:save": "dsh-e2e run e2e/verify-manual-save.mjs", "e2e:injection": "dsh-e2e run e2e/verify-injection-e2e.mjs", "e2e:shots": "dsh-e2e run e2e/screenshot-inject.mjs", "prepare": "npm run build" },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" }, "client": { "inject": ["@deepseek-ai/dsh-client-ui-settings"], "platform": "web" } },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.4",
