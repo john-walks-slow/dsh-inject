@@ -1,11 +1,12 @@
 import z from "@deepseek-ai/schemastery";
+import { registerBuiltinAgentPresets } from "./agent-presets.js";
 import { activePresetSummary, INJECT_USAGE, parseInjectInput, presetInjectionSummary, previewText } from "./command-input.js";
 import { defaultPresetIds, normalizeConfig, normalizeTurnMessage } from "./schema.js";
 import { createSessionState, MAX_PENDING_TURNS } from "./session-state.js";
 import { templateToMessages, transformMessages } from "./transform.js";
 
 export const name = "dsh-inject";
-export const inject = ["agents", "llm", "commands", "settings"];
+export const inject = ["agents", "llm", "commands", "settings", "sessionProjections"];
 export const Config = z.object({
   presets: z.array(z.any()).default([]).volatile(),
   templates: z.array(z.any()).default([]).volatile()
@@ -29,19 +30,30 @@ function sessionKey(agentOrId) {
   return String(typeof agentOrId === "object" ? agentOrId.session.id : agentOrId);
 }
 
-/** 按预设名或 id 匹配：整串优先（预设名可含空格），否则按逗号/空白拆开逐个匹配。 */
-function matchPresets(config, names) {
-  const wanted = names.flatMap(name => String(name).split(/[，,]/)).map(name => name.trim()).filter(Boolean);
-  if (!wanted.length) return [];
-  const whole = wanted.join(" ");
-  const exact = config.presets.find(preset => preset.id === whole || preset.name === whole);
-  if (exact) return [exact];
-  return config.presets.filter(preset => wanted.includes(preset.id) || wanted.includes(preset.name));
+/** 按预设 id 匹配；id 不含空白与逗号，命令层已完成切分。 */
+function matchPresets(config, ids) {
+  const wanted = new Set(ids);
+  return config.presets.filter(preset => wanted.has(preset.id));
+}
+
+/**
+ * 会话当前运行的 agent preset id。以 `agentPreset` 投影为准：它跟随运行中的
+ * preset 切换；`session.header.agentPreset` 只是创建时快照，切换后不再更新。
+ * 投影或会话缺失时退回 null，只保留全局默认项。
+ */
+function agentPresetOf(ctx, session) {
+  if (session === undefined || session === null) return null;
+  const current = ctx.sessionProjections.stateOf(session, "agentPreset");
+  if (typeof current === "string" && current.length > 0) return current;
+  const header = session.header?.agentPreset;
+  return typeof header === "string" && header.length > 0 ? header : null;
 }
 
 /** 该会话当前生效的预设：默认启用项叠加会话内显式开关。 */
-function activePresets(config, id) {
-  const active = new Set(sessions.activeIds(id, defaultPresetIds(config.presets)));
+function activePresets(ctx, config, id) {
+  const agent = ctx.agents.get(id);
+  const agentPresetId = agent === undefined ? null : agentPresetOf(ctx, agent.session);
+  const active = new Set(sessions.activeIds(id, defaultPresetIds(config.presets, agentPresetId)));
   return config.presets.filter(preset => active.has(preset.id));
 }
 
@@ -50,26 +62,26 @@ function registerCommands(ctx, rawConfig) {
     definitionId: "dsh-inject/inject",
     name: "inject",
     description: "启用或禁用本会话的 inject 预设；不传参数可查看状态",
-    input: { hint: "on|off <预设名...> | status | clear" },
+    input: { hint: "on|off <预设 id...> | status | clear" },
     handler: ({ rawInput, agent }) => {
       const config = readConfig(rawConfig);
       const id = sessionKey(agent);
       const parsed = parseInjectInput(rawInput);
       if (parsed.action === "invalid") return { kind: "error", text: INJECT_USAGE };
       if (parsed.action === "status") {
-        return { kind: "success", text: activePresetSummary(activePresets(config, id)) };
+        return { kind: "success", text: activePresetSummary(activePresets(ctx, config, id)) };
       }
       if (parsed.action === "clear") {
         sessions.clear(id);
         return { kind: "success", text: "已关闭本会话全部 inject 预设；替换规则不再改写请求，构造回合不再注入" };
       }
-      const presets = matchPresets(config, parsed.names);
-      if (presets.length === 0) return { kind: "error", text: `未找到预设：${parsed.names.join(" ")}（可用名称或 id，/inject 查看状态）` };
+      const presets = matchPresets(config, parsed.ids);
+      if (presets.length === 0) return { kind: "error", text: `未找到预设 id：${parsed.ids.join("、")}（/inject status 查看当前 id）` };
       const on = parsed.action === "on";
       for (const preset of presets) sessions.toggle(id, preset.id, on);
-      const head = `${on ? "已启用" : "已禁用"}：${presets.map(p => p.name).join("、")}`;
+      const head = `${on ? "已启用" : "已禁用"}：${presets.map(p => p.id).join("、")}`;
       if (!on) return { kind: "success", text: head };
-      const detail = presets.flatMap(preset => [`${preset.name} 注入：`, ...presetInjectionSummary(preset)]);
+      const detail = presets.flatMap(preset => [`${preset.id} 注入：`, ...presetInjectionSummary(preset)]);
       return { kind: "success", text: [head, ...detail].join("\n") };
     }
   });
@@ -177,6 +189,10 @@ export function apply(ctx, rawConfig = {}) {
   ctx.inject(["settings"], child => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
   });
+  // 内置 agent preset：unrestricted / nsfw。没有 agentPresets 服务的 profile 自动跳过。
+  ctx.inject(["agentPresets"], child => {
+    child.effect(() => registerBuiltinAgentPresets(child.agentPresets, child.logger));
+  });
   ctx.effect(() => registerCommands(ctx, rawConfig));
   ctx.on("agent/disposed", ({ agent }) => sessions.drop(sessionKey(agent)));
 
@@ -246,7 +262,7 @@ export function apply(ctx, rawConfig = {}) {
     if (!isLoopRequest(options) || transformedRequests.has(options)) return next();
     const id = sessionKey(options.sessionId);
     const config = readConfig(rawConfig);
-    const presets = activePresets(config, id);
+    const presets = activePresets(ctx, config, id);
     const hasRule = presets.some(preset => preset.rules.some(rule => rule.enabled && rule.pattern));
     const pending = sessions.take(id);
     const prefix = [...presets.flatMap(preset => preset.turns), ...pending];

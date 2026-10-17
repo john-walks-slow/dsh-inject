@@ -2,24 +2,25 @@
  * 命令输入解析与注入内容摘要：纯函数，供宿主命令与测试共用。
  */
 
-export const INJECT_USAGE = "用法：/inject [on|off] <预设名...>｜/inject status｜/inject clear";
+export const INJECT_USAGE = "用法：/inject [on|off] <预设 id...>（逗号或空格分隔）｜/inject status｜/inject clear";
 
 const LIST_ACTIONS = new Set(["status", "list"]);
 
 /**
  * 解析 `/inject` 的参数。
  *
- * 省略 `on` 时按启用处理（`/inject <预设名...>`），保留 `off`/`clear`/`status` 的原有语义。
- * @returns `{ action: "status" }`、`{ action: "clear" }`、`{ action: "on"|"off", names }`
- *   或 `{ action: "invalid" }`（`on`/`off` 后没有预设名）。
+ * 省略 `on` 时按启用处理（`/inject <预设 id...>`），保留 `off`/`clear`/`status` 的原有语义。
+ * 参数按空白或逗号切分，预设 id 本身不含这些字符。
+ * @returns `{ action: "status" }`、`{ action: "clear" }`、`{ action: "on"|"off", ids }`
+ *   或 `{ action: "invalid" }`（`on`/`off` 后没有预设 id）。
  */
 export function parseInjectInput(rawInput) {
   const input = String(rawInput ?? "").trim();
   if (!input || LIST_ACTIONS.has(input)) return { action: "status" };
   if (input === "clear") return { action: "clear" };
-  const [head, ...rest] = input.split(/\s+/);
-  if (head === "on" || head === "off") return rest.length ? { action: head, names: rest } : { action: "invalid" };
-  return { action: "on", names: [head, ...rest] };
+  const [head, ...rest] = input.split(/[\s,，]+/).filter(Boolean);
+  if (head === "on" || head === "off") return rest.length ? { action: head, ids: rest } : { action: "invalid" };
+  return { action: "on", ids: [head, ...rest] };
 }
 
 /** 注入回合的预览：压成一行并截断，供命令结果展示。 */
@@ -53,6 +54,8 @@ export function activePresetSummary(presets) {
     const rules = preset.rules.filter(rule => rule.enabled);
     if (rules.length) parts.push(countLabel(rules.length, "替换规则"));
     const suffix = parts.length ? parts.join("、") : "无注入内容";
-    return `- ${preset.name}${preset.defaultEnabled ? "（默认）" : ""}：${suffix}`;
+    const scope = Array.isArray(preset.agentPresets) ? preset.agentPresets : [];
+    const origin = preset.defaultEnabled ? (scope.length ? `默认：${scope.join("、")}` : "默认") : "";
+    return `- ${preset.id}${origin ? `（${origin}）` : ""}：${suffix}`;
   })].join("\n");
 }

@@ -80,7 +80,7 @@ for (let attempt = 0; attempt < 8 && results.length === 0; attempt++) {
   if (index >= 0) results = all.slice(index);
   else await new Promise(resolve => setTimeout(resolve, 1000));
 }
-console.log("1) 未找到预设时报错 =", results[0] === `error: 未找到预设：${MARKER}（可用名称或 id，/inject 查看状态）`);
+console.log("1) 未找到预设时报错 =", results[0] === `error: 未找到预设 id：${MARKER}（/inject status 查看当前 id）`);
 console.log("2) 状态显示默认启用 =", results[1] === "success: 当前启用：\n- coding-sanitizer（默认）：构造回合 1 条、替换规则 1 条");
 console.log("3) off 生效 =", results[2] === "success: 已禁用：coding-sanitizer");
 console.log("4) 省略 on 也能启用并列出注入内容 =", results[3] === "success: 已启用：coding-sanitizer\ncoding-sanitizer 注入：\n构造回合 1 条\n  1. [system] 本项目所有路径使用相对路径。\n替换规则 1 条");

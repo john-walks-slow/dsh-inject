@@ -32,10 +32,10 @@ const addPreset = page.getByRole("button", { name: "＋ 新建预设" });
 await addPreset.click();
 await addPreset.click();
 await page.waitForTimeout(1200);
-const names = page.getByPlaceholder("预设名称");
-await names.nth(0).fill("coding-sanitizer");
+const ids = page.getByPlaceholder("预设 id");
+await ids.nth(0).fill("coding-sanitizer");
 await page.getByPlaceholder("说明（可选）").nth(0).fill("脱敏密钥并前置项目约定");
-await names.nth(1).fill("terse-reply");
+await ids.nth(1).fill("terse-reply");
 await page.getByPlaceholder("说明（可选）").nth(1).fill("压缩冗长措辞");
 
 // 第一个预设：一条正则替换规则 + 一条系统回合

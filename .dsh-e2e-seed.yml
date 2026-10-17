@@ -9,8 +9,7 @@
   name: dsh-inject
   config:
     presets:
-      - id: preset-coding-sanitizer
-        name: coding-sanitizer
+      - id: coding-sanitizer
         description: 脱敏密钥并前置项目约定
         defaultEnabled: true
         rules:

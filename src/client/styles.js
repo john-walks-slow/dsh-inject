@@ -112,7 +112,6 @@ body[data-ds-dark-theme] .dsh-inject,
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
 }
-.dsh-inject .inject-save-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .dsh-inject .inject-save-status {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 4px 10px; border-radius: 6px;
@@ -122,9 +121,14 @@ body[data-ds-dark-theme] .dsh-inject,
 }
 .dsh-inject .inject-save-status.dirty {
   border-color: var(--inject-brand);
-  background: var(--inject-brand-bg);
+  background: color-mix(in srgb, var(--inject-brand) 12%, var(--inject-bg-base));
 }
 .dsh-inject .inject-save-status.error { border-color: #ef4444; color: #ef4444; }
+.dsh-inject .inject-save-dock {
+  position: sticky; bottom: 0; z-index: 30;
+  display: flex; justify-content: center;
+  padding: 8px 0;
+}
 .dsh-inject .inject-save-state { font-weight: 500; }
 .dsh-inject .inject-save-state.saved { color: var(--inject-text-tertiary); }
 .dsh-inject .inject-title-group { display: flex; flex-direction: column; gap: 4px; }
@@ -137,10 +141,14 @@ body[data-ds-dark-theme] .dsh-inject,
 }
 
 /* 导航 Tabs */
+.dsh-inject .inject-tab-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 20px;
+}
 .dsh-inject .inject-tabs {
   display: flex; gap: 4px; padding: 3px; border-radius: 8px;
   background: var(--inject-bg-subcard); border: 1px solid var(--inject-border-subtle);
-  margin-bottom: 20px; width: fit-content; max-width: 100%; overflow-x: auto;
+  width: fit-content; max-width: 100%; overflow-x: auto;
 }
 .dsh-inject .inject-tab-btn {
   display: flex; align-items: center; gap: 6px; padding: 6px 14px;

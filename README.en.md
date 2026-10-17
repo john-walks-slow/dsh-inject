@@ -20,8 +20,9 @@ Add `dsh-inject` to `dsh.profile.bundles` in your profile configuration.
 ## Core Semantics
 
 - **Modifies Request Only, Not Chat History**: Automatic rewrites occur solely on the copy sent to the model; original messages displayed in the UI and stored in session logs remain completely untouched.
-- **Disabled by Default**: Presets are inactive by default. Mark "Enable by default" in Settings for persistent behavior, or enable per session via `/inject <preset-name>`.
-- **Session-level Override**: `/inject <preset-name>` or `/inject off` only applies to the current session and takes precedence over global defaults.
+- **Disabled by Default**: Presets are inactive by default. Mark "Enable by default" in Settings for persistent behavior, or enable per session via `/inject <preset-id>`.
+- **Session-level Override**: `/inject <preset-id>` or `/inject off` only applies to the current session and takes precedence over global defaults.
+- **Agent-preset Scoped Defaults**: After marking "Enable by default", an expanded preset can list agent preset ids (comma separated, empty = all). A non-empty list makes the default apply only when the live session's agent preset matches. The live preset comes from DSH's `agentPreset` projection, so a runtime preset switch takes effect on the next request.
 - **Zero Side Effects**: Enabled states are in-process memory states and are not written into session logs; turning off a preset leaves no residual state.
 - Session-specific states reset upon process restart (falling back to globally default-enabled presets).
 
@@ -34,7 +35,7 @@ The settings view supports arbitrary custom presets, each containing:
 
 Additionally, reusable **turn templates** can be created for interactive dialogs and `/inject-turn`.
 
-Each preset header features an "Enable by default" toggle: when enabled, it applies automatically across all sessions.
+Each preset header features an "Enable by default" toggle; the expanded body can list agent preset ids (comma separated, empty = all) to scope that default to matching sessions only.
 
 The settings panel employs **manual saving**: modifications are staged locally with a banner showing "Unsaved changes" alongside Save / Discard buttons.
 
@@ -42,9 +43,9 @@ The settings panel employs **manual saving**: modifications are staged locally w
 
 ```text
 /inject                        Inspect active presets and injection summaries in current session
-/inject <preset-names...>      Enable presets (on keyword is optional, supports multiple names)
-/inject on <preset-names...>   Explicit enable syntax
-/inject off <preset-names...>  Disable specified presets
+/inject <id...>                Enable presets (on keyword optional, comma or space separated)
+/inject on <id...>             Explicit enable syntax
+/inject off <id...>            Disable specified presets
 /inject clear                  Clear and disable all presets in current session
 /inject-turn                   Open the interactive synthetic turn dialog
 /inject-turn <template-name>   Queue a saved template into the next model request
@@ -68,11 +69,20 @@ Every injection generates a collapsible row in the conversation matching host co
 - Expanding displays full synthetic messages and count of active replacement rules;
 - Integrated with host command lifecycle (`command/run` + `command/done`), surviving session reloads.
 
-## Keysmith Compatibility & Built-in Presets
+## Built-in Presets & Agent Presets
+
+With no user configuration, `dsh-inject` ships two inject presets:
+
+- **`unrestricted`**: the Keysmith local-execution system prompt plus common boundary-term neutralizations;
+- **`nsfw`**: adult-fiction writing instructions and scene turns.
+
+Each is scoped to its own agent preset (`agentPresets: ["unrestricted"]` / `["nsfw"]`), so ordinary sessions are unaffected. When the `agentPresets` service is available, the plugin also registers matching built-in agent presets (minimal composition: persona `complete` + basic tools + compaction); selecting one enables the matching inject preset automatically, and `/inject off` still overrides it per session. Profiles without the `agentPresets` service (for example headless) do not register agent presets; the inject presets remain available via `/inject`.
+
+## Keysmith Compatibility
 
 `dsh-inject` provides native compatibility with the **Keysmith** (Keysmith Switch / codex-keysmith) rules ecosystem:
 
-- **Built-in Presets**: Ships with `Keysmith: Unrestricted` featuring local execution mode system prompts and common neutralizations;
+- **Built-in Preset**: the `unrestricted` preset features local execution mode system prompts and common neutralizations;
 - **Direct Format Mapping**: Seamlessly parses Keysmith rule objects (`{ "from": "...", "to": "..." }`) and binds them to user turns;
 - **One-click Import**: Settings view includes a bulk import modal supporting pasted JSON rule arrays;
 - **Safety Safeguards**: Automatically protects slash commands starting with `/` and system reminder tags (`<system-reminder>`, `<command-name>`) from being altered.

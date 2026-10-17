@@ -28,10 +28,10 @@ await page.waitForTimeout(1500);
 await page.screenshot({ path: "shots/inject-settings-manual-save.png", fullPage: false });
 
 // 改个名拍 dirty 态
-const nameInput = page.locator('.dsh-inject input[placeholder*="预设名称"]').first();
+const nameInput = page.locator('.dsh-inject input[placeholder*="预设 id"]').first();
 await nameInput.waitFor({ timeout: 10000 });
 const original = await nameInput.inputValue();
-await nameInput.fill(original + " (修改中)");
+await nameInput.fill(original + "-edited");
 await page.waitForTimeout(500);
 await page.screenshot({ path: "shots/inject-settings-manual-save-dirty.png", fullPage: false });
 

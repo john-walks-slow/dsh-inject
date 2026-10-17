@@ -3,6 +3,7 @@ import {
   readConfig,
   writeConfig,
   emptyPreset,
+  nextPresetId,
   emptyRule,
   emptyTemplate,
   emptyTurn,
@@ -16,7 +17,7 @@ import {
   fetchRemoteText,
   assemblePresetFromRemote
 } from "./config-store.js";
-import { defaultPresets, ruleError } from "../schema.js";
+import { defaultPresets, ruleError, safeId } from "../schema.js";
 
 const ROLES = [
   { id: "user", label: "用户" },
@@ -80,7 +81,7 @@ function stripForCompare(c) {
   };
 }
 
-function SaveStatus({ dirty, saving, error, onSave, onDiscard }) {
+function SaveStatus({ dirty, saving, error, blockReason, onSave, onDiscard }) {
   if (error) {
     return (
       <div className="inject-save-status error">
@@ -98,10 +99,10 @@ function SaveStatus({ dirty, saving, error, onSave, onDiscard }) {
   }
   if (dirty) {
     return (
-      <div className="inject-save-status dirty">
-        <span className="inject-save-state">有未保存的修改</span>
+      <div className={`inject-save-status ${blockReason ? "error" : "dirty"}`}>
+        <span className="inject-save-state">{blockReason || "有未保存的修改"}</span>
         <button type="button" className="ghost sm" onClick={onDiscard}>放弃修改</button>
-        <button type="button" className="primary sm" onClick={onSave}>保存</button>
+        <button type="button" className="primary sm" disabled={Boolean(blockReason)} onClick={onSave}>保存</button>
       </div>
     );
   }
@@ -142,6 +143,17 @@ function ConfirmButton({ label = "删除", confirmLabel = "确认删除？", onC
       {confirming ? confirmLabel : label}
     </button>
   );
+}
+
+/** 导入的预设 id 可能与现有预设重复；id 是唯一句柄，冲突时追加序号。 */
+function withUniqueIds(existing, incoming) {
+  const used = new Set(existing.map(preset => preset.id));
+  return incoming.map(preset => {
+    let id = preset.id;
+    for (let n = 2; used.has(id); n += 1) id = `${preset.id}-${n}`;
+    used.add(id);
+    return { ...preset, id };
+  });
 }
 
 function CommandPill({ command }) {
@@ -316,10 +328,15 @@ function TurnsEditor({ turns, onChange }) {
   );
 }
 
-function PresetCard({ preset, onChange, onRemove, onClone, onExport, onOpenImport, defaultOpen = false }) {
+function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, onOpenImport, defaultOpen = false }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [searchQuery, setSearchQuery] = useState("");
+  const [agentScope, setAgentScope] = useState(() => (preset.agentPresets ?? []).join(", "));
   const patch = values => onChange({ ...preset, ...values });
+
+  useEffect(() => {
+    setAgentScope((preset.agentPresets ?? []).join(", "));
+  }, [preset.agentPresets]);
 
   const rules = preset.rules ?? [];
   const activeCount = rules.filter(r => r.enabled !== false).length;
@@ -352,7 +369,7 @@ function PresetCard({ preset, onChange, onRemove, onClone, onExport, onOpenImpor
         <div className="row" style={{ gap: 10, flex: "1 1 auto" }}>
           <span className={`preset-toggle-icon ${isOpen ? "open" : ""}`}>▶</span>
           <div className="preset-head-title">
-            <span>{preset.name || "未命名预设"}</span>
+            <span>{preset.id || "未命名预设"}</span>
             <span className="inject-badge" style={{ fontWeight: 500 }}>
               {rules.length} 条替换规则 ({activeCount} 启用) · {turns.length} 个构造回合
             </span>
@@ -362,7 +379,7 @@ function PresetCard({ preset, onChange, onRemove, onClone, onExport, onOpenImpor
         <div className="row" style={{ gap: 8 }} onClick={e => e.stopPropagation()}>
           <label
             className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
-            title="勾选后所有会话默认启用本预设（会话内可 /inject off 单独关闭）"
+            title="勾选后默认启用本预设；可在展开区用「限定 agent preset」缩小范围（会话内仍可 /inject off 单独关闭）"
           >
             <input
               type="checkbox"
@@ -371,7 +388,7 @@ function PresetCard({ preset, onChange, onRemove, onClone, onExport, onOpenImpor
             />
             默认启用
           </label>
-          {preset.name && <CommandPill command={`/inject on ${preset.name}`} />}
+          <CommandPill command={`/inject on ${preset.id}`} />
           <button type="button" className="ghost sm" onClick={onClone} title="克隆预设">复制</button>
           <button type="button" className="ghost sm" onClick={onExport} title="导出 JSON">导出</button>
           <ConfirmButton label="删除" confirmLabel="确定删除预设？" onConfirm={onRemove} />
@@ -383,10 +400,11 @@ function PresetCard({ preset, onChange, onRemove, onClone, onExport, onOpenImpor
           <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
             <input
               type="text"
-              style={{ width: 220 }}
-              value={preset.name ?? ""}
-              onChange={e => patch({ name: e.target.value })}
-              placeholder="预设名称（用于 /inject on 指令）"
+              style={{ width: 260 }}
+              value={preset.id ?? ""}
+              onChange={e => patch({ id: e.target.value.replace(/[\s,，/\\]+/g, "-") })}
+              onBlur={e => patch({ id: safeId(e.target.value) })}
+              placeholder="预设 id（/inject 使用）"
             />
             <input
               type="text"
@@ -395,6 +413,25 @@ function PresetCard({ preset, onChange, onRemove, onClone, onExport, onOpenImpor
               onChange={e => patch({ description: e.target.value })}
               placeholder="说明（可选）"
             />
+            {(!preset.id || takenIds.includes(preset.id)) && (
+              <span className="hint-text" style={{ flexBasis: "100%", margin: 0, color: "var(--inject-danger)" }}>
+                {preset.id ? "该 id 已被其他预设占用" : "id 不能为空"}
+              </span>
+            )}
+          </div>
+
+          <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              type="text"
+              style={{ width: 260 }}
+              value={agentScope}
+              onChange={e => setAgentScope(e.target.value)}
+              onBlur={() => patch({ agentPresets: agentScope.split(/[\s,，]+/).filter(Boolean) })}
+              placeholder="限定 agent preset（逗号分隔，留空=全部）"
+            />
+            <span className="hint-text" style={{ margin: 0 }}>
+              勾选「默认启用」后，只在当前会话的 agent preset 命中这些 id 时生效；留空表示所有会话。
+            </span>
           </div>
 
           <div className="inject-section-title">
@@ -506,7 +543,7 @@ function PlaygroundPanel({ presets }) {
             <span>测试预设：</span>
             <select value={selectedPresetId} onChange={e => setSelectedPresetId(e.target.value)}>
               {presets.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>{p.id}</option>
               ))}
             </select>
           </label>
@@ -530,7 +567,7 @@ function PlaygroundPanel({ presets }) {
           <button
             type="button"
             className="ghost sm"
-            onClick={() => setInputSample("/inject on Keysmith: Codex Unrestricted")}
+            onClick={() => setInputSample("/inject on keysmith-codex-unrestricted")}
           >
             示例 (斜杠命令保护)
           </button>
@@ -638,16 +675,17 @@ function ImportExportModal({
     setFetchNotice(`正在拉取链接内容...`);
     try {
       const text = await fetchRemoteText(url);
+      const fileName = new URL(url).pathname.split("/").pop() || "remote";
       const meta = {
-        id: `custom-${Date.now()}`,
-        name: customName.trim() || `远程规则 (${new URL(url).pathname.split("/").pop() || "Custom"})`,
+        id: customName.trim() || fileName.replace(/\.[^.]+$/, ""),
+        name: customName.trim() || `远程规则 (${fileName})`,
         description: `来源: ${url}`,
         url,
         rules: []
       };
       const assembled = assemblePresetFromRemote(meta, text);
       onAppendPreset(assembled);
-      setFetchNotice(`✓ 已导入「${assembled.name}」`);
+      setFetchNotice(`✓ 已导入「${assembled.id}」`);
       setCustomUrl("");
       setCustomName("");
       setTimeout(() => setFetchNotice(""), 3000);
@@ -680,7 +718,7 @@ function ImportExportModal({
       <div className="dsh-inject-modal">
         <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
           <strong style={{ fontSize: 16 }}>
-            {targetPreset ? `导入 / 导出规则（${targetPreset.name}）` : "Keysmith 规则库"}
+            {targetPreset ? `导入 / 导出规则（${targetPreset.id}）` : "导入 / 导出"}
           </strong>
           <button type="button" className="ghost" onClick={onClose}>✕</button>
         </div>
@@ -783,7 +821,7 @@ function ImportExportModal({
                   style={{ flex: "1 1 120px" }}
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
-                  placeholder="预设名称（可选）"
+                  placeholder="预设 id（可选）"
                 />
                 <button
                   type="button"
@@ -891,6 +929,16 @@ export function SettingsPanel({ scope }) {
   const presets = draft.presets ?? [];
   const templates = draft.templates ?? [];
 
+  const idProblem = useMemo(() => {
+    const seen = new Set();
+    for (const preset of presets) {
+      if (!preset.id) return "预设 id 不能为空";
+      if (seen.has(preset.id)) return `预设 id 重复：${preset.id}`;
+      seen.add(preset.id);
+    }
+    return "";
+  }, [presets]);
+
   const patchPreset = (index, value) => {
     setDraft(current => ({
       ...current,
@@ -921,14 +969,14 @@ export function SettingsPanel({ scope }) {
   const handleImportPresets = (newPresets, replace) => {
     setDraft(current => ({
       ...current,
-      presets: replace ? newPresets : [...current.presets, ...newPresets]
+      presets: replace ? newPresets : [...current.presets, ...withUniqueIds(current.presets, newPresets)]
     }));
   };
 
   const handleAppendPreset = (newPreset) => {
     setDraft(current => ({
       ...current,
-      presets: [...current.presets, newPreset]
+      presets: [...current.presets, ...withUniqueIds(current.presets, [newPreset])]
     }));
   };
 
@@ -950,41 +998,40 @@ export function SettingsPanel({ scope }) {
           </p>
         </div>
 
-        <div className="inject-save-bar">
-          <SaveStatus dirty={dirty} saving={saving} error={error} onSave={save} onDiscard={discard} />
-          <button
-            type="button"
-            className="primary sm"
-            onClick={() => setModalState({ open: true, targetPreset: null })}
-          >
-            Keysmith 规则库
-          </button>
-        </div>
       </div>
 
-      <div className="inject-tabs">
+      <div className="inject-tab-row">
+        <div className="inject-tabs">
+          <button
+            type="button"
+            className={`inject-tab-btn ${activeTab === "presets" ? "active" : ""}`}
+            onClick={() => setActiveTab("presets")}
+          >
+            <span>规则预设</span>
+            <span className="inject-badge">{presets.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`inject-tab-btn ${activeTab === "templates" ? "active" : ""}`}
+            onClick={() => setActiveTab("templates")}
+          >
+            <span>构造回合模板</span>
+            <span className="inject-badge">{templates.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`inject-tab-btn ${activeTab === "playground" ? "active" : ""}`}
+            onClick={() => setActiveTab("playground")}
+          >
+            <span>规则测试沙盒</span>
+          </button>
+        </div>
         <button
           type="button"
-          className={`inject-tab-btn ${activeTab === "presets" ? "active" : ""}`}
-          onClick={() => setActiveTab("presets")}
+          className="primary sm"
+          onClick={() => setModalState({ open: true, targetPreset: null })}
         >
-          <span>规则预设</span>
-          <span className="inject-badge">{presets.length}</span>
-        </button>
-        <button
-          type="button"
-          className={`inject-tab-btn ${activeTab === "templates" ? "active" : ""}`}
-          onClick={() => setActiveTab("templates")}
-        >
-          <span>构造回合模板</span>
-          <span className="inject-badge">{templates.length}</span>
-        </button>
-        <button
-          type="button"
-          className={`inject-tab-btn ${activeTab === "playground" ? "active" : ""}`}
-          onClick={() => setActiveTab("playground")}
-        >
-          <span>规则测试沙盒</span>
+          导入 / 导出
         </button>
       </div>
 
@@ -992,12 +1039,12 @@ export function SettingsPanel({ scope }) {
         <div className="col" style={{ gap: 12 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
             <span className="hint-text">
-              在会话中输入 <code>/inject on 预设名</code> 启用、<code>/inject off</code> 关闭；标记「默认启用」的预设对所有会话生效。
+              在会话中输入 <code>/inject on 预设 id</code> 启用（多个用逗号分隔）、<code>/inject off</code> 关闭；标记「默认启用」的预设对所有会话生效。
             </span>
             <button
               type="button"
               className="primary sm"
-              onClick={() => setDraft(current => ({ ...current, presets: [...current.presets, emptyPreset()] }))}
+              onClick={() => setDraft(current => ({ ...current, presets: [...current.presets, emptyPreset(nextPresetId(current.presets))] }))}
             >
               ＋ 新建预设
             </button>
@@ -1012,11 +1059,11 @@ export function SettingsPanel({ scope }) {
                   className="primary"
                   onClick={() => setModalState({ open: true, targetPreset: null })}
                 >
-                  打开 Keysmith 规则库
+                  导入 / 导出
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDraft(current => ({ ...current, presets: [emptyPreset()] }))}
+                  onClick={() => setDraft(current => ({ ...current, presets: [emptyPreset(nextPresetId([]))] }))}
                 >
                   创建空白预设
                 </button>
@@ -1026,13 +1073,14 @@ export function SettingsPanel({ scope }) {
 
           {presets.map((preset, index) => (
             <PresetCard
-              key={preset.id ?? index}
+              key={index}
               preset={preset}
+              takenIds={presets.filter((_, i) => i !== index).map(p => p.id)}
               defaultOpen={index === 0}
               onChange={value => patchPreset(index, value)}
               onRemove={() => setDraft(current => ({ ...current, presets: current.presets.filter((_, i) => i !== index) }))}
               onClone={() => {
-                const cloned = clonePreset(preset);
+                const [cloned] = withUniqueIds(presets, [clonePreset(preset)]);
                 const nextPresets = [...presets];
                 nextPresets.splice(index + 1, 0, cloned);
                 setDraft(current => ({ ...current, presets: nextPresets }));
@@ -1095,6 +1143,12 @@ export function SettingsPanel({ scope }) {
         allConfig={draft}
         onAppendPreset={handleAppendPreset}
       />
+
+      {dirty && (
+        <div className="inject-save-dock">
+          <SaveStatus dirty={dirty} saving={saving} error={error} blockReason={idProblem} onSave={save} onDiscard={discard} />
+        </div>
+      )}
     </section>
   );
 }

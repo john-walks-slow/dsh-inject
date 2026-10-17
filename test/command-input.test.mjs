@@ -3,16 +3,22 @@ import assert from "node:assert/strict";
 import { activePresetSummary, parseInjectInput, presetInjectionSummary, previewText } from "../src/command-input.js";
 
 test("parseInjectInput: 省略 on 时按启用处理", () => {
-  assert.deepEqual(parseInjectInput(" alpha"), { action: "on", names: ["alpha"] });
-  assert.deepEqual(parseInjectInput("alpha beta"), { action: "on", names: ["alpha", "beta"] });
-  assert.deepEqual(parseInjectInput("Keysmith: Unrestricted"), { action: "on", names: ["Keysmith:", "Unrestricted"] });
+  assert.deepEqual(parseInjectInput(" alpha"), { action: "on", ids: ["alpha"] });
+  assert.deepEqual(parseInjectInput("alpha beta"), { action: "on", ids: ["alpha", "beta"] });
 });
 
 test("parseInjectInput: 保留 on/off/clear/status 语义", () => {
-  assert.deepEqual(parseInjectInput("on alpha"), { action: "on", names: ["alpha"] });
-  assert.deepEqual(parseInjectInput("off alpha beta"), { action: "off", names: ["alpha", "beta"] });
+  assert.deepEqual(parseInjectInput("on alpha"), { action: "on", ids: ["alpha"] });
+  assert.deepEqual(parseInjectInput("off alpha beta"), { action: "off", ids: ["alpha", "beta"] });
   assert.deepEqual(parseInjectInput("clear"), { action: "clear" });
   for (const input of ["", "  ", "status", "list"]) assert.deepEqual(parseInjectInput(input), { action: "status" });
+});
+
+test("parseInjectInput: 逗号切分多个预设 id", () => {
+  assert.deepEqual(parseInjectInput("on alpha,beta"), { action: "on", ids: ["alpha", "beta"] });
+  assert.deepEqual(parseInjectInput("on alpha, beta"), { action: "on", ids: ["alpha", "beta"] });
+  assert.deepEqual(parseInjectInput("alpha，beta"), { action: "on", ids: ["alpha", "beta"] });
+  assert.deepEqual(parseInjectInput("off alpha,,beta"), { action: "off", ids: ["alpha", "beta"] });
 });
 
 test("parseInjectInput: on/off 后没有预设名时报用法错误", () => {
@@ -42,8 +48,8 @@ test("presetInjectionSummary: 列出构造回合与启用的替换规则", () =>
 test("activePresetSummary: 空状态与逐预设摘要", () => {
   assert.equal(activePresetSummary([]), "当前没有启用 inject 预设");
   const text = activePresetSummary([
-    { name: "alpha", defaultEnabled: true, turns: [{ role: "user", text: "x" }], rules: [{ enabled: true, pattern: "a" }] },
-    { name: "beta", defaultEnabled: false, turns: [], rules: [] }
+    { id: "alpha", name: "Alpha", defaultEnabled: true, turns: [{ role: "user", text: "x" }], rules: [{ enabled: true, pattern: "a" }] },
+    { id: "beta", name: "Beta", defaultEnabled: false, turns: [], rules: [] }
   ]);
   assert.equal(text, "当前启用：\n- alpha（默认）：构造回合 1 条、替换规则 1 条\n- beta：无注入内容");
 });

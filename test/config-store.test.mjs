@@ -20,19 +20,22 @@ test("config-store: cloneRule and clonePreset generate unique ids and copy suffi
   assert.equal(clonedR.pattern, "foo");
 
   const preset = {
-    ...emptyPreset(),
-    name: "主预设",
+    ...emptyPreset("main"),
     defaultEnabled: true,
+    agentPresets: ["plain"],
     rules: [rule],
     turns: [{ role: "system", text: "sys" }]
   };
   const clonedP = clonePreset(preset);
   assert.notEqual(clonedP.id, preset.id);
-  assert.equal(clonedP.name, "主预设 (副本)");
+  assert.equal(clonedP.id, "main-copy");
   assert.equal(clonedP.defaultEnabled, true);
+  assert.deepEqual(clonedP.agentPresets, ["plain"]);
+  assert.notEqual(clonedP.agentPresets, preset.agentPresets);
   assert.notEqual(clonedP.rules[0].id, rule.id);
   assert.equal(clonedP.turns[0].text, "sys");
   assert.equal(emptyPreset().defaultEnabled, false);
+  assert.deepEqual(emptyPreset().agentPresets, []);
 });
 
 test("config-store: parseKeysmithRules supports single array and object wrapping", () => {
@@ -49,10 +52,12 @@ test("config-store: parseKeysmithRules supports single array and object wrapping
 });
 
 test("config-store: parsePresets parses array or object", () => {
-  const raw = JSON.stringify([{ name: "外部预设", rules: [] }]);
+  const raw = JSON.stringify([{ id: "outside", rules: [] }, { name: "仅有旧名称", rules: [] }]);
   const parsed = parsePresets(raw);
-  assert.equal(parsed.length, 1);
-  assert.equal(parsed[0].name, "外部预设");
+  assert.equal(parsed.length, 2);
+  assert.equal(parsed[0].id, "outside");
+  assert.equal(parsed[1].id, "仅有旧名称");
+  assert.equal("name" in parsed[0], false);
 });
 
 test("config-store: simulateReplacement calculates text changes, hits and protects tags", () => {
@@ -80,14 +85,13 @@ test("config-store: simulateReplacement calculates text changes, hits and protec
 test("config-store: assemblePresetFromRemote parses markdown text into system turn preset", () => {
   const meta = {
     id: "test-meta",
-    name: "远程测试预设",
     description: "说明文本",
     rules: [{ from: "A", to: "B" }]
   };
   const markdownText = "You are a helpful assistant in local mode.";
   const preset = assemblePresetFromRemote(meta, markdownText);
 
-  assert.equal(preset.name, "远程测试预设");
+  assert.equal(preset.id, "test-meta");
   assert.equal(preset.turns.length, 1);
   assert.equal(preset.turns[0].role, "system");
   assert.equal(preset.turns[0].text, markdownText);

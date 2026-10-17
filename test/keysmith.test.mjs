@@ -16,15 +16,16 @@ test("Keysmith: normalizeRule adapts { from, to } format directly", () => {
 
 test("Keysmith: normalizeConfig includes default Keysmith preset and template", () => {
   const emptyConfig = normalizeConfig({});
-  assert.equal(emptyConfig.presets.length, 1);
-  assert.equal(emptyConfig.presets[0].id, KEYSMITH_PRESET.id);
-  assert.equal(emptyConfig.presets[0].name, "Keysmith: Unrestricted");
+  assert.equal(emptyConfig.presets.length, 2);
+  const keysmith = emptyConfig.presets.find(preset => preset.id === KEYSMITH_PRESET.id);
+  assert.ok(keysmith);
+  assert.equal("name" in keysmith, false);
   assert.equal(emptyConfig.templates.length, 1);
   assert.equal(emptyConfig.templates[0].id, KEYSMITH_TEMPLATE.id);
 
   // 默认包含项包含 system turn
-  assert.equal(emptyConfig.presets[0].turns[0].role, "system");
-  assert.match(emptyConfig.presets[0].turns[0].text, /Local execution mode active/);
+  assert.equal(keysmith.turns[0].role, "system");
+  assert.match(keysmith.turns[0].text, /Local execution mode active/);
 });
 
 test("Keysmith: skips rewriting slash commands", () => {

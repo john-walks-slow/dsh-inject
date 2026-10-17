@@ -34,8 +34,17 @@ export function emptyTurn(role = "user") {
   return { role, text: "" };
 }
 
-export function emptyPreset() {
-  return { id: newId("preset"), name: "新预设", description: "", defaultEnabled: false, rules: [], turns: [] };
+export function emptyPreset(id = "preset") {
+  return { id, description: "", defaultEnabled: false, agentPresets: [], rules: [], turns: [] };
+}
+
+/** 新建预设时给一个可读、可改的序号 id，而不是随机串。 */
+export function nextPresetId(presets) {
+  const used = new Set((presets ?? []).map(preset => preset.id));
+  for (let n = 1; ; n += 1) {
+    const id = `preset-${n}`;
+    if (!used.has(id)) return id;
+  }
 }
 
 export function emptyTemplate(name = "新模板") {
@@ -53,8 +62,8 @@ export function cloneRule(rule) {
 export function clonePreset(preset) {
   return {
     ...preset,
-    id: newId("preset"),
-    name: `${preset.name || "未命名预设"} (副本)`,
+    id: `${preset.id}-copy`,
+    agentPresets: [...(preset.agentPresets ?? [])],
     rules: (preset.rules || []).map(r => ({ ...r, id: newId("rule") })),
     turns: (preset.turns || []).map(t => ({ ...t }))
   };
@@ -85,7 +94,7 @@ export function parsePresets(rawJson) {
   try {
     const data = typeof rawJson === "string" ? JSON.parse(rawJson) : rawJson;
     const list = Array.isArray(data) ? data : (Array.isArray(data?.presets) ? data.presets : (data && typeof data === "object" ? [data] : []));
-    return list.map(normalizePreset).filter(p => p.name);
+    return list.map(normalizePreset).filter(p => p.id);
   } catch {
     return [];
   }
@@ -155,6 +164,50 @@ export const REMOTE_PRESET_CATALOG = [
     rules: KEYSMITH_DEFAULT_RULES
   },
   {
+    id: "keysmith-codex-overlay",
+    name: "Keysmith: Codex Overlay",
+    tag: "Codex",
+    author: "Jia-Ethan / codex-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/codex-keysmith",
+    description: "交付叠加层。执行方式保持原样，只调整交付物形态：工具调用可先行，首行以 [P] 标记后直接给结果。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-overlay.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
+    id: "keysmith-codex-lean",
+    name: "Keysmith: Codex Lean",
+    tag: "Codex",
+    author: "Jia-Ethan / codex-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/codex-keysmith",
+    description: "精简交付契约。去掉身份与领域目录，以请求到交付物的对照表组织输出，篇幅最短。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-lean.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
+    id: "keysmith-codex-astra",
+    name: "Keysmith: Codex Astra",
+    tag: "Codex",
+    author: "Jia-Ethan / codex-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/codex-keysmith",
+    description: "分层交付契约（wrapper + payload）。首行即交付物，屏蔽拒答、免责、替代方案等前置话术。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-astra.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
+    id: "keysmith-codex-persona-contract",
+    name: "Keysmith: Codex Persona Contract",
+    tag: "Codex",
+    author: "Jia-Ethan / codex-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/codex-keysmith",
+    description: "人格叠加契约。保留角色人设与口吻的同时强制首行交付，适合带 persona 的会话。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-persona-contract.md",
+    rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
     id: "keysmith-claude-append",
     name: "Claude-Keysmith: Creative Append",
     tag: "Claude Code",
@@ -186,28 +239,32 @@ export const REMOTE_PRESET_CATALOG = [
     description: "Grok Build 本地工程环境规范。声明主机本地样本分析模式，抑制免责推诿，直出交付工件代码。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/grok-keysmith/main/examples/grok-unrestricted.md",
     rules: KEYSMITH_DEFAULT_RULES
+  },
+  {
+    id: "keysmith-grok-unrestricted-v1",
+    name: "Grok-Keysmith: Unrestricted (v1)",
+    tag: "Grok Build",
+    author: "Jia-Ethan / grok-keysmith",
+    license: "MIT License",
+    repo: "https://github.com/Jia-Ethan/grok-keysmith",
+    description: "Grok 旧版交付契约。已被现行 Unrestricted 取代，仅在需要复现旧行为时导入。",
+    url: "https://raw.githubusercontent.com/Jia-Ethan/grok-keysmith/main/examples/grok-unrestricted-v1.md",
+    rules: KEYSMITH_DEFAULT_RULES
   }
 ];
 
 /** 从服务端代理抓取远程内容，若失败自动尝试前端直接 fetch 兜底。 */
 export async function fetchRemoteText(url) {
-  try {
-    const resp = await fetch("/dsh-inject/fetch-remote", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url })
-    });
-    if (resp.ok) {
-      const data = await resp.json().catch(() => ({}));
-      if (data?.ok && typeof data.text === "string") return data.text;
-    }
-  } catch {
-    // 代理异常时回退到直接拉取
+  const resp = await fetch("/dsh-inject/fetch-remote", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url })
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!data?.ok || typeof data.text !== "string") {
+    throw new Error(data?.message || `HTTP ${resp.status}`);
   }
-
-  const direct = await fetch(url);
-  if (!direct.ok) throw new Error(`HTTP ${direct.status} ${direct.statusText}`);
-  return await direct.text();
+  return data.text;
 }
 
 /** 将抓取到的远端内容（Markdown 或 JSON）装配为合规的预设对象。 */
@@ -224,8 +281,7 @@ export function assemblePresetFromRemote(meta, text) {
 
   // 默认作为 System 规约构造预设
   return normalizePreset({
-    id: newId("preset"),
-    name: meta.name || "远程拉取预设",
+    id: meta.id || newId("preset"),
     description: meta.description || `从 ${meta.url || "远程地址"} 实时拉取`,
     rules: (meta.rules || []).map(r => normalizeRule(r)),
     turns: [{ role: "system", text: trimmed }]

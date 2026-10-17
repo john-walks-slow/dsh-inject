@@ -62,7 +62,7 @@ await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
 
 const toggle = page.locator(".inject-default-toggle").first();
 const box = toggle.locator('input[type="checkbox"]');
-const presetName = await page.getByPlaceholder("预设名称").first().inputValue();
+const presetId = await page.getByPlaceholder("预设 id").first().inputValue();
 if (!(await box.isChecked())) await toggle.click();
 await page.waitForTimeout(2000);
 const boxChecked = await box.isChecked();
@@ -87,7 +87,7 @@ async function runCommand(line) {
   await page.waitForTimeout(2000);
 }
 await runCommand("/inject");
-await runCommand(`/inject off ${presetName}`);
+await runCommand(`/inject off ${presetId}`);
 await runCommand("/inject status");
 await browser.close();
 
@@ -95,7 +95,7 @@ await browser.close();
 const results = commandResults().slice(-3);
 console.log("0) 开关处于勾选态 =", boxChecked);
 console.log("0) 已落盘到 profile 配置 =", persisted);
-console.log("1) 默认启用对会话生效 =", results[0]?.startsWith("success: 当前启用：") === true && results[0].includes(`- ${presetName}（默认）：`));
-console.log("2) 会话内可显式关闭 =", results[1] === `success: 已禁用：${presetName}`);
+console.log("1) 默认启用对会话生效 =", results[0]?.startsWith("success: 当前启用：") === true && results[0].includes(`- ${presetId}（默认）：`));
+console.log("2) 会话内可显式关闭 =", results[1] === `success: 已禁用：${presetId}`);
 console.log("3) 关闭后不再生效 =", results[2] === "success: 当前没有启用 inject 预设");
 console.log("实际日志 =", JSON.stringify(results));

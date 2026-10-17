@@ -1,7 +1,7 @@
 /**
  * 验证设置页改成"手动保存"模式：
  *  1. 打开设置页，header 应显示「已保存」
- *  2. 修改一个预设名称 → 状态变为「有未保存的修改」+ 显示「保存」「放弃修改」按钮
+ *  2. 修改一个预设 id → 状态变为「有未保存的修改」+ 显示「保存」「放弃修改」按钮
  *  3. 点「保存」 → 状态回到「已保存」
  *  4. 再次修改 → 点「放弃修改」 → 状态回到「已保存」
  *  5. 关闭页面重新进 → 配置是新保存的值
@@ -52,11 +52,11 @@ if (bodyCount === 0) {
 }
 
 // 修改 preset 名称（preset card body 已展开时的名称输入）
-const nameInput = page.locator('.dsh-inject input[placeholder*="预设名称"]').first();
+const nameInput = page.locator('.dsh-inject input[placeholder*="预设 id"]').first();
 await nameInput.waitFor({ timeout: 10000 });
-const originalName = await nameInput.inputValue();
-console.log("original preset name:", originalName);
-await nameInput.fill(originalName + " (修改中)");
+const originalId = await nameInput.inputValue();
+console.log("original preset id:", originalId);
+await nameInput.fill(originalId + "-edited");
 await page.waitForTimeout(500);
 await snapshot("after edit");
 
@@ -66,7 +66,7 @@ await page.waitForTimeout(2500);
 await snapshot("after save");
 
 // 再改一次 → 放弃
-await nameInput.fill(originalName + " (再次修改)");
+await nameInput.fill(originalId + "-again");
 await page.waitForTimeout(500);
 await snapshot("second edit");
 await page.getByRole("button", { name: /^放弃修改$/ }).first().click({ force: true });
@@ -90,9 +90,9 @@ await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
 await page.waitForTimeout(1500);
 await snapshot("reopened");
 
-const finalName = await page.locator('.dsh-inject input[placeholder*="预设名称"]').first().inputValue();
-console.log("final preset name after re-open:", finalName);
-console.log("expected:", originalName + " (修改中)");
+const finalName = await page.locator('.dsh-inject input[placeholder*="预设 id"]').first().inputValue();
+console.log("final preset id after re-open:", finalName);
+console.log("expected:", originalId + "-edited");
 console.log("reopen persists saved value:", true);
 
 await browser.close();
