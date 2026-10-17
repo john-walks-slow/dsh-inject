@@ -47,12 +47,12 @@ await snapshot("initial");
 // preset card 默认展开，先确认 body 在
 const bodyCount = await page.locator(".preset-body").count();
 if (bodyCount === 0) {
-  await page.locator(".preset-head-bar").first().click({ force: true });
+  await page.locator(".preset-head-title").first().click({ force: true });
   await page.waitForTimeout(500);
 }
 
 // 修改 preset 名称（preset card body 已展开时的名称输入）
-const nameInput = page.locator('.dsh-inject input[placeholder*="预设 id"]').first();
+const nameInput = page.locator(".dsh-inject").getByLabel("预设 id", { exact: true }).first();
 await nameInput.waitFor({ timeout: 10000 });
 const originalId = await nameInput.inputValue();
 console.log("original preset id:", originalId);
@@ -90,7 +90,7 @@ await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
 await page.waitForTimeout(1500);
 await snapshot("reopened");
 
-const finalName = await page.locator('.dsh-inject input[placeholder*="预设 id"]').first().inputValue();
+const finalName = await page.locator(".dsh-inject").getByLabel("预设 id", { exact: true }).first().inputValue();
 console.log("final preset id after re-open:", finalName);
 console.log("expected:", originalId + "-edited");
 console.log("reopen persists saved value:", true);

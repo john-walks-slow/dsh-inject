@@ -28,7 +28,7 @@ await page.waitForTimeout(1500);
 await page.screenshot({ path: "shots/inject-settings-manual-save.png", fullPage: false });
 
 // 改个名拍 dirty 态
-const nameInput = page.locator('.dsh-inject input[placeholder*="预设 id"]').first();
+const nameInput = page.locator(".dsh-inject").getByLabel("预设 id", { exact: true }).first();
 await nameInput.waitFor({ timeout: 10000 });
 const original = await nameInput.inputValue();
 await nameInput.fill(original + "-edited");

@@ -366,53 +366,67 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
   return (
     <div className="inject-preset-card">
       <div className="preset-head-bar" onClick={() => setIsOpen(!isOpen)}>
-        <div className="row" style={{ gap: 10, flex: "1 1 auto" }}>
-          <span className={`preset-toggle-icon ${isOpen ? "open" : ""}`}>▶</span>
-          <div className="preset-head-title">
-            <span>{preset.id || "未命名预设"}</span>
-            <span className="inject-badge" style={{ fontWeight: 500 }}>
-              {rules.length} 条替换规则 ({activeCount} 启用) · {turns.length} 个构造回合
-            </span>
-          </div>
-        </div>
+        <div className="col grow" style={{ gap: 8 }}>
+          <div className="preset-head-row">
+            <div className="row" style={{ gap: 10, flex: "1 1 auto" }}>
+              <span className={`preset-toggle-icon ${isOpen ? "open" : ""}`}>▶</span>
+              <div className="preset-head-title">
+                <span>{preset.id || "未命名预设"}</span>
+                <span className="inject-badge" style={{ fontWeight: 500 }}>
+                  {rules.length} 条替换规则 ({activeCount} 启用) · {turns.length} 个构造回合
+                </span>
+              </div>
+            </div>
 
-        <div className="row" style={{ gap: 8 }} onClick={e => e.stopPropagation()}>
-          <label
-            className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
-            title="勾选后默认启用本预设；可在展开区用「限定 agent preset」缩小范围（会话内仍可 /inject off 单独关闭）"
-          >
-            <input
-              type="checkbox"
-              checked={preset.defaultEnabled === true}
-              onChange={e => patch({ defaultEnabled: e.target.checked })}
-            />
-            默认启用
-          </label>
-          <CommandPill command={`/inject on ${preset.id}`} />
-          <button type="button" className="ghost sm" onClick={onClone} title="克隆预设">复制</button>
-          <button type="button" className="ghost sm" onClick={onExport} title="导出 JSON">导出</button>
-          <ConfirmButton label="删除" confirmLabel="确定删除预设？" onConfirm={onRemove} />
+            <div className="row" style={{ gap: 8 }} onClick={e => e.stopPropagation()}>
+              <label
+                className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
+                title="勾选后默认启用本预设；可在展开区用「限定 agent preset」缩小范围（会话内仍可 /inject off 单独关闭）"
+              >
+                <input
+                  type="checkbox"
+                  checked={preset.defaultEnabled === true}
+                  onChange={e => patch({ defaultEnabled: e.target.checked })}
+                />
+                默认启用
+              </label>
+              <button type="button" className="ghost sm" onClick={onClone} title="克隆预设">复制</button>
+              <button type="button" className="ghost sm" onClick={onExport} title="导出 JSON">导出</button>
+              <ConfirmButton label="删除" confirmLabel="确定删除预设？" onConfirm={onRemove} />
+            </div>
+          </div>
+
+          <div className="preset-head-command">
+            <span className="inject-field-label">启用命令</span>
+            <CommandPill command={`/inject on ${preset.id}`} />
+          </div>
         </div>
       </div>
 
       {isOpen && (
         <div className="preset-body">
-          <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-            <input
-              type="text"
-              style={{ width: 260 }}
-              value={preset.id ?? ""}
-              onChange={e => patch({ id: e.target.value.replace(/[\s,，/\\]+/g, "-") })}
-              onBlur={e => patch({ id: safeId(e.target.value) })}
-              placeholder="预设 id（/inject 使用）"
-            />
-            <input
-              type="text"
-              className="grow"
-              value={preset.description ?? ""}
-              onChange={e => patch({ description: e.target.value })}
-              placeholder="说明（可选）"
-            />
+          <div className="row" style={{ gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+            <label className="inject-field shrink-0">
+              <span className="inject-field-label">预设 id</span>
+              <input
+                type="text"
+                style={{ width: 220 }}
+                value={preset.id ?? ""}
+                onChange={e => patch({ id: e.target.value.replace(/[\s,，/\\]+/g, "-") })}
+                onBlur={e => patch({ id: safeId(e.target.value) })}
+                placeholder="/inject 使用的句柄"
+              />
+            </label>
+            <label className="inject-field grow">
+              <span className="inject-field-label">说明</span>
+              <input
+                type="text"
+                className="grow"
+                value={preset.description ?? ""}
+                onChange={e => patch({ description: e.target.value })}
+                placeholder="可选，一句话描述用途"
+              />
+            </label>
             {(!preset.id || takenIds.includes(preset.id)) && (
               <span className="hint-text" style={{ flexBasis: "100%", margin: 0, color: "var(--inject-danger)" }}>
                 {preset.id ? "该 id 已被其他预设占用" : "id 不能为空"}
@@ -421,14 +435,17 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
           </div>
 
           <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              type="text"
-              style={{ width: 260 }}
-              value={agentScope}
-              onChange={e => setAgentScope(e.target.value)}
-              onBlur={() => patch({ agentPresets: agentScope.split(/[\s,，]+/).filter(Boolean) })}
-              placeholder="限定 agent preset（逗号分隔，留空=全部）"
-            />
+            <label className="inject-field shrink-0">
+              <span className="inject-field-label">限定 agent preset</span>
+              <input
+                type="text"
+                style={{ width: 230 }}
+                value={agentScope}
+                onChange={e => setAgentScope(e.target.value)}
+                onBlur={() => patch({ agentPresets: agentScope.split(/[\s,，]+/).filter(Boolean) })}
+                placeholder="逗号分隔，留空=全部"
+              />
+            </label>
             <span className="hint-text" style={{ margin: 0 }}>
               勾选「默认启用」后，只在当前会话的 agent preset 命中这些 id 时生效；留空表示所有会话。
             </span>

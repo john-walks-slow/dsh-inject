@@ -208,6 +208,13 @@ body[data-ds-dark-theme] .dsh-inject,
   font-size: 15px; font-weight: 600; color: var(--inject-text-primary);
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
+.dsh-inject .preset-head-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.dsh-inject .preset-head-command {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
 .dsh-inject .preset-body {
   padding: 16px; border-top: 1px solid var(--inject-border-subtle);
   background: var(--inject-bg-base);
@@ -365,6 +372,12 @@ body[data-ds-dark-theme] .dsh-inject,
 }
 .dsh-inject .hint-text {
   font-size: 12px; color: var(--inject-text-tertiary); margin: 4px 0;
+}
+
+/* 表单字段与其标签 */
+.dsh-inject .inject-field { display: inline-flex; align-items: center; gap: 6px; }
+.dsh-inject .inject-field-label {
+  font-size: 12px; font-weight: 600; color: var(--inject-text-secondary); white-space: nowrap;
 }
 
 /* 沙盒 Playground 面板 */

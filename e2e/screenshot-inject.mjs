@@ -22,31 +22,45 @@ await dismiss(/^Continue$/, 25000);
 await dismiss(/Configure later/, 15000);
 await mkdir("shots", { recursive: true });
 
-// 设置页：建两个预设
+// 设置页：先清掉内置默认预设，再建两个画面更紧凑的演示预设
 await page.getByRole("button", { name: "Settings" }).click({ force: true });
 await dismiss(/Configure later/, 12000);
 await page.getByRole("button", { name: "Inject" }).click({ timeout: 20000 });
 await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
 
+const cards = page.locator(".inject-preset-card");
+while (await cards.count()) {
+  const headBar = cards.first().locator(".preset-head-bar");
+  await headBar.getByRole("button", { name: "删除", exact: true }).click({ force: true });
+  await headBar.getByRole("button", { name: "确定删除预设？" }).click({ force: true });
+  await page.waitForTimeout(300);
+}
+
 const addPreset = page.getByRole("button", { name: "＋ 新建预设" });
 await addPreset.click();
 await addPreset.click();
 await page.waitForTimeout(1200);
-const ids = page.getByPlaceholder("预设 id");
+const panel = page.locator(".dsh-inject");
+const ids = panel.getByLabel("预设 id", { exact: true });
+const descriptions = panel.getByLabel("说明", { exact: true });
 await ids.nth(0).fill("coding-sanitizer");
-await page.getByPlaceholder("说明（可选）").nth(0).fill("脱敏密钥并前置项目约定");
+await descriptions.nth(0).fill("脱敏密钥并前置项目约定");
+
+// 第二个预设默认折叠，展开后才渲染正文输入框
+await cards.nth(1).locator(".preset-head-title").click({ force: true });
+await page.waitForTimeout(500);
 await ids.nth(1).fill("terse-reply");
-await page.getByPlaceholder("说明（可选）").nth(1).fill("压缩冗长措辞");
+await descriptions.nth(1).fill("压缩冗长措辞");
 
 // 第一个预设：一条正则替换规则 + 一条系统回合
-await page.getByRole("button", { name: "＋ 添加替换规则" }).nth(0).click();
-await page.getByPlaceholder("规则名称").nth(0).fill("屏蔽 API Key");
-await page.locator('select:has(option[value="regex"])').nth(0).selectOption("regex");
+await page.getByRole("button", { name: "＋ 添加规则" }).nth(0).click();
+await page.locator(".inject-rule-card input[placeholder^='规则名称']").first().fill("屏蔽 API Key");
+await page.locator(".inject-rule-card select").first().selectOption("regex");
 await page.getByPlaceholder("正则表达式").nth(0).fill("sk-[A-Za-z0-9]{16,}");
 await page.getByPlaceholder("替换为").nth(0).fill("<redacted-key>");
-await page.getByRole("button", { name: "＋ 添加消息" }).nth(0).click();
-await page.locator('select:has(option[value="system"])').nth(0).selectOption("system");
-await page.getByPlaceholder("消息内容").nth(0).fill("本项目所有路径使用相对路径。");
+await page.getByRole("button", { name: "＋ 添加构造回合消息" }).nth(0).click();
+await page.locator(".inject-turn-card select").first().selectOption("system");
+await page.locator(".inject-turn-textarea").first().fill("本项目所有路径使用相对路径。");
 await page.waitForTimeout(1200);
 await page.locator(".dsh-inject").first().evaluate(node => node.scrollIntoView({ block: "start" }));
 await page.evaluate(() => {

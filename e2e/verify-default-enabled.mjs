@@ -62,7 +62,7 @@ await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
 
 const toggle = page.locator(".inject-default-toggle").first();
 const box = toggle.locator('input[type="checkbox"]');
-const presetId = await page.getByPlaceholder("预设 id").first().inputValue();
+const presetId = await page.locator(".dsh-inject").getByLabel("预设 id", { exact: true }).first().inputValue();
 if (!(await box.isChecked())) await toggle.click();
 await page.waitForTimeout(2000);
 const boxChecked = await box.isChecked();
