@@ -9,6 +9,7 @@
 
 - **Three ways to inject**: system-prompt sections, synthetic turns (system / user / assistant / tool), and keyword or regex replacement.
 - **Four ways to drive it**: attach a preset to a mode (active the moment a session switches to it), toggle per session with `/inject on|off`, mark it always-on, or scope it by model / agent preset - so different models can run different presets.
+- **Ready-made presets**: `unrestricted` (the Keysmith local-execution contract), `nsfw` and `authority` ship built in, and the preset library imports the **dsh-purge** prompt plus online rule sets in one click.
 
 Every injection leaves a collapsible record line in the conversation describing exactly what was injected.
 
