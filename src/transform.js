@@ -70,18 +70,6 @@ export function transformMessages(messages, presets) {
   });
 }
 
-/**
- * 预设的系统段文字改走请求侧：inject 模式（persona complete）下宿主只保留身份段，
- * 系统段进不了请求，由这里作为 system 构造回合投递，排在预设自己的构造回合之前。
- *
- * @param preset inject 预设。
- * @returns 单个 system 回合，或空数组。
- */
-export function systemPromptTurns(preset) {
-  const text = typeof preset?.systemPrompt === "string" ? preset.systemPrompt.trim() : "";
-  return text ? [{ role: "system", text }] : [];
-}
-
 export function templateToMessages(turns) {
   return turns.map((turn, index) => {
     const content = [{ type: "text", text: turn.text }];

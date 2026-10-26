@@ -15,7 +15,6 @@ test("systemSectionText: joins active preset sections and drops empty ones", () 
 function fakeApplyContext() {
   const sections = [];
   const commands = [];
-  const handlers = new Map();
   const ctx = {
     fiber: {},
     logger: { warn() {} },
@@ -25,10 +24,7 @@ function fakeApplyContext() {
         return () => {};
       }
     },
-    llm: { stream: request => request },
-    on(event, handler) {
-      handlers.set(event, handler);
-    },
+    on() {},
     effect(fn) { return fn(); },
     inject(_deps, callback) {
       const child = {
@@ -49,7 +45,7 @@ function fakeApplyContext() {
       callback(child);
     }
   };
-  return { ctx, sections, commands, handlers };
+  return { ctx, sections, commands };
 }
 
 test("apply registers a per-agent system section and only emits active presets", async () => {
@@ -77,42 +73,4 @@ test("apply registers a per-agent system section and only emits active presets",
   assert.equal(result.kind, "success");
   assert.match(section.text({ agent }), /Operator authority/);
   assert.match(section.text({ agent }), /Delivery:/);
-});
-
-test("apply: inject 模式下系统段改走请求侧，普通模式仍由宿主段承载", async () => {
-  const { apply } = await import("../src/index.js");
-  const config = {
-    presets: [{
-      id: "x",
-      createMode: true,
-      defaultEnabled: true,
-      systemPrompt: "SECTION-TEXT",
-      rules: [],
-      turns: [{ role: "system", text: "TURN-TEXT" }]
-    }]
-  };
-
-  async function requestIn(agentPreset) {
-    const { ctx, handlers } = fakeApplyContext();
-    apply(ctx, config);
-    const session = { id: "pipe-test", header: { agentPreset }, projectionValues: { agentPreset }, append() {} };
-    const agent = { session, options: { provider: "cpa", model: "medium" } };
-    ctx.agents = { get: id => (id === session.id ? agent : undefined) };
-    ctx.sessionProjections = { stateOf: () => agentPreset };
-    const handler = handlers.get("llm/stream");
-    assert.ok(handler);
-    // 处理器改写后直接返回 ctx.llm.stream(request)，即改写后的请求体
-    return handler(Object.freeze({ sessionId: session.id, messages: [] }), () => "next");
-  }
-
-  const inMode = await requestIn("inject-x");
-  assert.equal(inMode.messages[0].role, "system");
-  const modeSystem = inMode.messages[0].content.map(block => block.text ?? "").join("\n");
-  assert.match(modeSystem, /SECTION-TEXT/);
-  assert.match(modeSystem, /TURN-TEXT/);
-
-  const standard = await requestIn("standard");
-  const standardSystem = standard.messages[0].content.map(block => block.text ?? "").join("\n");
-  assert.doesNotMatch(standardSystem, /SECTION-TEXT/);
-  assert.match(standardSystem, /TURN-TEXT/);
 });

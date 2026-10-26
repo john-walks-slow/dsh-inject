@@ -65,15 +65,15 @@ test("createAgentPresetDefinition: 沿用 standard 能力但换掉身份", () =>
     assert.deepEqual(definition.plugins.find(row => row.id === id), plugins.find(row => row.id === id));
   }
 
-  // 身份段让位：complete + 空 prefix，默认身份与宿主其它系统段都不进请求
+  // 身份段清空且不标 complete：标准那句 persona 不再出现，宿主其余系统段照常进入请求
   const persona = definition.plugins.find(row => row.name === "@deepseek-ai/dsh-persona");
-  assert.deepEqual(persona.config, { prefix: "", complete: true });
+  assert.deepEqual(persona.config, { prefix: "", complete: false });
   assert.equal(plugins.find(row => row.id === "persona").config.prefix, "You are a coding agent powered by the {{model}} model.");
 });
 
 test("injectModePlugins: standard 缺 persona 行时补一行空身份", () => {
   const rows = injectModePlugins([{ id: "tool-fs", name: "@deepseek-ai/dsh-tool-fs" }]);
-  assert.deepEqual(rows[0], { id: "persona", name: "@deepseek-ai/dsh-persona", config: { prefix: "", complete: true } });
+  assert.deepEqual(rows[0], { id: "persona", name: "@deepseek-ai/dsh-persona", config: { prefix: "", complete: false } });
   assert.equal(rows[1].id, "tool-fs");
 });
 

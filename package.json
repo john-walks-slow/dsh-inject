@@ -52,7 +52,9 @@
     "e2e:save": "dsh-e2e run e2e/verify-manual-save.mjs",
     "e2e:injection": "dsh-e2e run e2e/verify-injection-e2e.mjs",
     "e2e:shots": "dsh-e2e run e2e/screenshot-inject.mjs",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test",
+    "release": "npm run test && npm version patch && npm pack --pack-destination /tmp"
   },
   "dsh": {
     "bundle": {
