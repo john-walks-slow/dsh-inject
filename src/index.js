@@ -1,6 +1,6 @@
 import z from "@deepseek-ai/schemastery";
-import { registerBuiltinAgentPresets } from "./agent-presets.js";
-import { activePresetSummary, INJECT_USAGE, parseInjectInput, presetInjectionSummary, previewText } from "./command-input.js";
+import { createAgentPresetManager } from "./agent-presets.js";
+import { activePresetSummary, autoActivationText, INJECT_USAGE, parseInjectInput, presetInjectionSummary, previewText } from "./command-input.js";
 import { defaultPresetIds, normalizeConfig, normalizeTurnMessage } from "./schema.js";
 import { createSessionState, MAX_PENDING_TURNS } from "./session-state.js";
 import { templateToMessages, transformMessages } from "./transform.js";
@@ -113,6 +113,39 @@ function systemSectionForAgent(ctx, config, agent) {
   }
 }
 
+/**
+ * 把「默认启用（含命中 agent preset）而自动生效」落成一条会话记录行。
+ *
+ * 自动启用没有对应的命令调用，因此直接补一对 `command/run` + `command/done`，
+ * 与会话里 `/inject` 的行同形态。每个预设只记一次：重复请求、重试都不会再写。
+ */
+function announceAutoPresets(ctx, id, presets, agentPresetId) {
+  const announced = sessions.announcedIds(id);
+  const fresh = presets.filter(preset =>
+    !announced.has(preset.id)
+    && (preset.turns.length > 0
+      || preset.rules.some(rule => rule.enabled && rule.pattern)
+      || (typeof preset.systemPrompt === "string" && preset.systemPrompt.trim().length > 0))
+  );
+  if (!fresh.length) return;
+  const session = ctx.agents.get(id)?.session;
+  if (session === undefined) return;
+  const commandId = "cmd-inject-auto-" + crypto.randomUUID();
+  try {
+    session.append("command/run", {
+      commandId,
+      name: "inject",
+      args: "on " + fresh.map(preset => preset.id).join(" "),
+      source: { kind: "user" }
+    });
+    session.append("command/done", { commandId, kind: "success", text: autoActivationText(fresh, agentPresetId) });
+  } catch (error) {
+    ctx.logger?.warn?.("dsh-inject: auto activation record failed: " + (error?.message ?? error));
+    return;
+  }
+  sessions.markAnnounced(id, fresh.map(preset => preset.id));
+}
+
 function registerCommands(ctx, rawConfig) {
   const injectDispose = ctx.commands.register({
     definitionId: "dsh-inject/inject",
@@ -135,6 +168,8 @@ function registerCommands(ctx, rawConfig) {
       if (presets.length === 0) return { kind: "error", text: `未找到预设 id：${parsed.ids.join("、")}（/inject status 查看当前 id）` };
       const on = parsed.action === "on";
       for (const preset of presets) sessions.toggle(id, preset.id, on);
+      // 手动启用已经留下了记录行，自动启用记录不再重复写同一预设。
+      if (on) sessions.markAnnounced(id, presets.map(preset => preset.id));
       const head = `${on ? "已启用" : "已禁用"}：${presets.map(p => p.id).join("、")}`;
       if (!on) return { kind: "success", text: head };
       const detail = presets.flatMap(preset => [`${preset.id} 注入：`, ...presetInjectionSummary(preset)]);
@@ -255,9 +290,20 @@ export function apply(ctx, rawConfig = {}) {
   ctx.inject(["settings"], child => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
   });
-  // 内置 agent preset：unrestricted / nsfw。没有 agentPresets 服务的 profile 自动跳过。
+  // 动态注册开启了「创建为模式」的 agent preset (inject-{id})。没有 agentPresets 服务的 profile 自动跳过。
   ctx.inject(["agentPresets"], child => {
-    child.effect(() => registerBuiltinAgentPresets(child.agentPresets, child.logger));
+    const manager = createAgentPresetManager(child.agentPresets, child.logger);
+    child.effect(() => {
+      void manager.sync(readConfig(rawConfig).presets);
+      const onUpdate = () => {
+        void manager.sync(readConfig(rawConfig).presets);
+      };
+      child.on?.("loader/volatile-update", onUpdate);
+      child.on?.("settings/document-updated", onUpdate);
+      return () => {
+        manager.dispose();
+      };
+    });
   });
   ctx.effect(() => registerCommands(ctx, rawConfig));
   ctx.on("agent/disposed", ({ agent }) => sessions.drop(sessionKey(agent)));
@@ -337,6 +383,7 @@ export function apply(ctx, rawConfig = {}) {
     const rewritten = transformMessages(options.messages, presets);
     const messages = insertPrefix(rewritten, templateToMessages(prefix));
     if (messages === options.messages) return next();
+    announceAutoPresets(ctx, id, presets, currentAgentPresetId(ctx, id));
     const request = { ...options, messages };
     transformedRequests.add(request);
     return ctx.llm.stream(request);

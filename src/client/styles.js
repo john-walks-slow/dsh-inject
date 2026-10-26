@@ -168,6 +168,9 @@ body[data-ds-dark-theme] .dsh-inject,
   background: var(--inject-btn-bg); color: var(--inject-text-secondary);
   font-weight: 600;
 }
+.dsh-inject .inject-badge.purple {
+  background: var(--inject-purple-bg); color: var(--inject-purple);
+}
 .dsh-inject .inject-tab-btn.active .inject-badge {
   background: var(--inject-brand-bg); color: var(--inject-brand);
 }
@@ -233,6 +236,29 @@ body[data-ds-dark-theme] .dsh-inject,
   color: var(--inject-brand); font-weight: 600;
 }
 .dsh-inject .inject-default-toggle input { margin: 0; accent-color: var(--inject-brand); cursor: pointer; }
+
+/* 高级选项折叠区 */
+.dsh-inject .inject-advanced-details {
+  border: 1px solid var(--inject-border-subtle);
+  border-radius: 6px;
+  background: var(--inject-bg-subcard);
+}
+.dsh-inject .inject-advanced-summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--inject-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+.dsh-inject .inject-advanced-summary:hover {
+  background: var(--inject-btn-hover);
+}
+.dsh-inject .inject-advanced-body {
+  padding: 12px;
+  border-top: 1px solid var(--inject-border-subtle);
+}
 
 /* 子面板分组 */
 .dsh-inject .inject-section-title {

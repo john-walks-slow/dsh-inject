@@ -69,6 +69,7 @@ export function activePresetSummary(presets) {
     const scope = Array.isArray(preset.agentPresets) ? preset.agentPresets : [];
     const models = Array.isArray(preset.models) ? preset.models : [];
     const origin = [];
+    if (preset.createMode) origin.push(`模式：inject-${preset.id}`);
     if (preset.defaultEnabled) origin.push(scope.length ? `默认：${scope.join("、")}` : "默认");
     if (models.length) origin.push(`模型：${models.join("、")}`);
     return `- ${preset.id}${origin.length ? `（${origin.join("；")}）` : ""}：${suffix}`;

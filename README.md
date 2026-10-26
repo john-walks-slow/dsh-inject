@@ -74,19 +74,20 @@ npm install dsh-inject
 
 - 行标题是注入来源（`inject` / `inject-turn`），折叠态显示一行摘要，点开看完整内容；
 - `/inject <id>` 的行列出该预设将注入的构造回合与启用的替换规则数；
-- `/inject-turn`（含现场 dialog 写入）的行列出刚排入下一次请求的构造回合。
+- `/inject-turn`（含现场 dialog 写入）的行列出刚排入下一次请求的构造回合；
+- 默认启用（含命中 agent preset 自动生效）的预设，会在首次实际注入时补一条同样形态的行，写明触发的 preset 与注入内容（每会话每预设只记一次）。
 
 实现上，窗口里的「插入」不是直接往队列里塞数据，而是走宿主命令生命周期（`command/run` + `command/done`），因此这条记录与会话日志同生共死，重开会话仍在。
 
-## 内置预设与 agent preset
+## 内置预设与 agent preset 模式
 
 未配置时，`dsh-inject` 自带三个 inject 预设：
 
-- **`unrestricted`**：Keysmith 本地执行模式系统规约（`Local execution mode active`）及常用敏感词/边界词中性化替换规则。
-- **`nsfw`**：成人文学创作规约与场景回合。
+- **`unrestricted`**：Keysmith 本地执行模式系统规约（`Local execution mode active`）及常用敏感词/边界词中性化替换规则；默认开启「创建为模式」，注入模式 `inject-unrestricted`。
+- **`nsfw`**：成人文学创作规约与场景回合；默认开启「创建为模式」，注入模式 `inject-nsfw`。
 - **`authority`**：把 DSH 渲染的工作区指令免责句（“may be relevant / do not override”）改写为强制指令，并附一段简短的「操作者权威 + 先交付后解释」系统段；默认关闭，用 `/inject on authority` 启用。
 
-`unrestricted` / `nsfw` 限定在各自的 agent preset 下默认启用（`agentPresets: ["unrestricted"]` / `["nsfw"]`），普通会话完全不受影响。插件会在 `agentPresets` 服务可用时注册同名的内置 agent preset（最小组合：persona complete + 基础工具 + compaction）；选中该 agent preset 时，对应 inject 预设自动生效，会话内仍可用 `/inject off` 单独关闭。没有 `agentPresets` 服务的 profile（例如 headless）不会注册 agent preset，inject 预设仍可用 `/inject` 手动启用。
+每一个 inject preset 都可以 toggle「创建为模式」开关。开启后，插件会向宿主动态注册名为 `inject-{id}` 的 agent preset（最小组合：persona complete + 基础工具 + compaction）；会话顶部切换至该模式时，对应 inject 预设自动生效。过去的「总是启用」以及「限定 agent preset / 模型」筛选作为高级选项保留。没有 `agentPresets` 服务的 profile（例如 headless）不会注册模式，inject 预设仍可用 `/inject` 手动启用。
 
 ## Keysmith 兼容
 

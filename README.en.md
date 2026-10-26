@@ -70,18 +70,19 @@ Every injection generates a collapsible row in the conversation matching host co
 
 - Displays source tag (`inject` / `inject-turn`) and summary line when folded;
 - Expanding displays full synthetic messages and count of active replacement rules;
+- Default-enabled presets (including those activated by a matching agent preset) get the same row on their first actual injection, naming the triggering preset and their payload (once per preset per session);
 - Integrated with host command lifecycle (`command/run` + `command/done`), surviving session reloads.
 
-## Built-in Presets & Agent Presets
+## Built-in Presets & Agent Preset Modes
 
 With no user configuration, `dsh-inject` ships three inject presets:
 
-- **`unrestricted`**: the Keysmith local-execution system prompt plus common boundary-term neutralizations;
-- **`nsfw`**: adult-fiction writing instructions and scene turns.
+- **`unrestricted`**: the Keysmith local-execution system prompt plus common boundary-term neutralizations; "Create as Mode" is enabled by default, exposing the `inject-unrestricted` agent preset mode.
+- **`nsfw`**: adult-fiction writing instructions and scene turns; "Create as Mode" is enabled by default, exposing the `inject-nsfw` agent preset mode.
 
 A third preset, **`authority`**, rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
 
-`unrestricted` and `nsfw` are scoped to their own agent preset (`agentPresets: ["unrestricted"]` / `["nsfw"]`), so ordinary sessions are unaffected. When the `agentPresets` service is available, the plugin also registers matching built-in agent presets (minimal composition: persona `complete` + basic tools + compaction); selecting one enables the matching inject preset automatically, and `/inject off` still overrides it per session. Profiles without the `agentPresets` service (for example headless) do not register agent presets; the inject presets remain available via `/inject`.
+Every inject preset can toggle the "Create as Mode" switch. When enabled, the plugin registers an agent preset mode named `inject-{id}` (minimal composition: persona `complete` + basic tools + compaction); switching to this mode in a session automatically enables the matching inject preset. Legacy "always enabled" and agent preset / model filters are preserved under Advanced Options. Profiles without the `agentPresets` service (for example headless) do not register modes; inject presets remain available via `/inject`.
 
 ## Keysmith Compatibility
 

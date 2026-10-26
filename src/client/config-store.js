@@ -44,7 +44,7 @@ export function mergeBuiltinPresets(presets) {
 }
 
 export function emptyPreset(id = "preset") {
-  return { id, description: "", defaultEnabled: false, agentPresets: [], models: [], systemPrompt: "", rules: [], turns: [] };
+  return { id, description: "", createMode: false, defaultEnabled: false, agentPresets: [], models: [], systemPrompt: "", rules: [], turns: [] };
 }
 
 /** 新建预设时给一个可读、可改的序号 id，而不是随机串。 */
@@ -72,6 +72,8 @@ export function clonePreset(preset) {
   return {
     ...preset,
     id: `${preset.id}-copy`,
+    createMode: preset.createMode === true,
+    defaultEnabled: preset.defaultEnabled === true,
     agentPresets: [...(preset.agentPresets ?? [])],
     models: [...(preset.models ?? [])],
     systemPrompt: preset.systemPrompt ?? "",

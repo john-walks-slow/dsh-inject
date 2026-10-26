@@ -45,13 +45,32 @@ test("defaultPresetIds: agentPresets 限定默认启用范围", () => {
   assert.deepEqual(defaultPresetIds(config.presets, null), ["global"]);
 });
 
-test("内置预设只在对应 agent preset 下默认启用", () => {
+test("内置预设只在对应 inject-{id} 模式下自动启用", () => {
   const presets = normalizeConfig({}).presets;
   assert.equal(presets.length, 3);
   assert.equal(presets.some(preset => preset.id === "authority"), true);
   assert.deepEqual(defaultPresetIds(presets), []);
-  assert.deepEqual(defaultPresetIds(presets, "unrestricted"), ["unrestricted"]);
-  assert.deepEqual(defaultPresetIds(presets, "nsfw"), ["nsfw"]);
+  assert.deepEqual(defaultPresetIds(presets, "inject-unrestricted"), ["unrestricted"]);
+  assert.deepEqual(defaultPresetIds(presets, "inject-nsfw"), ["nsfw"]);
+  assert.deepEqual(defaultPresetIds(presets, "other"), []);
+});
+
+test("createMode 模式匹配与 defaultEnabled 范围正交有效", () => {
+  const config = normalizeConfig({
+    presets: [
+      { id: "mode-only", name: "M", createMode: true },
+      { id: "default-only", name: "D", defaultEnabled: true },
+      { id: "both", name: "B", createMode: true, defaultEnabled: true, agentPresets: ["plain"] }
+    ]
+  });
+  // 普通未指定 agent preset 的会话：只有 default-only 生效（both 限制了 plain）
+  assert.deepEqual(defaultPresetIds(config.presets), ["default-only"]);
+  // 选了 inject-mode-only 模式：mode-only 与 default-only 都生效
+  assert.deepEqual(defaultPresetIds(config.presets, "inject-mode-only"), ["mode-only", "default-only"]);
+  // 选了 inject-both 模式：both 通过 createMode 命中，default-only 也生效
+  assert.deepEqual(defaultPresetIds(config.presets, "inject-both"), ["default-only", "both"]);
+  // 选了 plain 模式：default-only 生效，both 通过 agentPresets 过滤命中
+  assert.deepEqual(defaultPresetIds(config.presets, "plain"), ["default-only", "both"]);
 });
 
 test("safeId: 标识不含空格、逗号与斜杠", () => {

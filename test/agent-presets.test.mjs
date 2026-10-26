@@ -1,23 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { builtinAgentPresets, registerBuiltinAgentPresets } from "../src/agent-presets.js";
+import {
+  createAgentPresetDefinition,
+  createAgentPresetManager,
+  builtinAgentPresets,
+  registerBuiltinAgentPresets
+} from "../src/agent-presets.js";
 
-test("builtinAgentPresets: 提供 unrestricted / nsfw 两个最小组合", () => {
-  const presets = builtinAgentPresets();
-  assert.deepEqual(presets.map(preset => preset.id), ["unrestricted", "nsfw"]);
-  for (const preset of presets) {
-    const persona = preset.plugins.find(plugin => plugin.id === "persona");
-    assert.equal(persona.name, "@deepseek-ai/dsh-persona");
-    assert.equal(persona.config.complete, true);
-    assert.equal(persona.config.prefix, "");
-    assert.ok(preset.plugins.some(plugin => plugin.id === "tool-bash" || plugin.id === "tool-pwsh"));
-    assert.ok(preset.plugins.some(plugin => plugin.id === "compaction"));
-  }
-  // 两个 preset 各自持有独立的 plugins 数组
-  assert.notEqual(presets[0].plugins, presets[1].plugins);
+test("createAgentPresetDefinition: 为 preset 生成 inject-{id} 模式定义与最小插件组合", () => {
+  const definition = createAgentPresetDefinition({
+    id: "my-preset",
+    description: "测试预设"
+  });
+  assert.equal(definition.id, "inject-my-preset");
+  assert.equal(definition.name, "inject-my-preset");
+  assert.equal(definition.description, "测试预设");
+  assert.equal(definition.order, 90);
+
+  const persona = definition.plugins.find(plugin => plugin.id === "persona");
+  assert.equal(persona.name, "@deepseek-ai/dsh-persona");
+  assert.equal(persona.config.complete, true);
+  assert.equal(persona.config.prefix, "");
+  assert.ok(definition.plugins.some(plugin => plugin.id === "tool-bash" || plugin.id === "tool-pwsh"));
+  assert.ok(definition.plugins.some(plugin => plugin.id === "compaction"));
 });
 
-test("registerBuiltinAgentPresets: 注册成功并在 disposer 时归还", async () => {
+test("createAgentPresetManager: 根据 createMode 动态增量注册与注销模式", async () => {
   const registered = new Map();
   const disposed = [];
   const service = {
@@ -31,21 +39,53 @@ test("registerBuiltinAgentPresets: 注册成功并在 disposer 时归还", async
     }
   };
   const warnings = [];
-  const dispose = registerBuiltinAgentPresets(service, { warn: message => warnings.push(message) });
-  await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual([...registered.keys()].sort(), ["nsfw", "unrestricted"]);
-  assert.deepEqual(warnings, []);
-  dispose();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual(disposed.sort(), ["nsfw", "unrestricted"]);
+  const manager = createAgentPresetManager(service, { warn: msg => warnings.push(msg) });
+
+  // 1. 首次同步：两个开启 createMode 的预设
+  await manager.sync([
+    { id: "unrestricted", createMode: true, description: "本地规约" },
+    { id: "nsfw", createMode: true, description: "自由创作" },
+    { id: "authority", createMode: false, description: "指令强制" }
+  ]);
+  assert.deepEqual([...registered.keys()].sort(), ["inject-nsfw", "inject-unrestricted"]);
+  assert.equal(warnings.length, 0);
+
+  // 2. 动态更新：关闭 nsfw 的 createMode，新增 custom
+  await manager.sync([
+    { id: "unrestricted", createMode: true, description: "本地规约" },
+    { id: "nsfw", createMode: false, description: "自由创作" },
+    { id: "custom", createMode: true, description: "自定模式" }
+  ]);
+  assert.deepEqual([...registered.keys()].sort(), ["inject-custom", "inject-unrestricted"]);
+  assert.ok(disposed.includes("inject-nsfw"));
+
+  // 3. 销毁时清理全部模式
+  manager.dispose();
+  assert.equal(registered.size, 0);
+  assert.ok(disposed.includes("inject-unrestricted"));
+  assert.ok(disposed.includes("inject-custom"));
 });
 
-test("registerBuiltinAgentPresets: 注册失败只记警告，不抛出", async () => {
+test("createAgentPresetManager: 注册失败时记录警告，不影响其它预设", async () => {
   const warnings = [];
-  const service = { register: async () => { throw new Error("Duplicate agent preset: unrestricted"); } };
-  const dispose = registerBuiltinAgentPresets(service, { warn: message => warnings.push(message) });
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(warnings.length, 2);
-  assert.match(warnings[0], /builtin agent preset/);
-  dispose();
+  const service = {
+    register: async definition => {
+      if (definition.id.includes("fail")) throw new Error("Duplicate agent preset");
+      return () => {};
+    }
+  };
+  const manager = createAgentPresetManager(service, { warn: msg => warnings.push(msg) });
+
+  await manager.sync([
+    { id: "ok", createMode: true },
+    { id: "fail", createMode: true }
+  ]);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /inject-fail/);
+  manager.dispose();
+});
+
+test("builtinAgentPresets: 兼容导出提供 inject-unrestricted 与 inject-nsfw", () => {
+  const presets = builtinAgentPresets();
+  assert.deepEqual(presets.map(p => p.id), ["inject-unrestricted", "inject-nsfw"]);
 });

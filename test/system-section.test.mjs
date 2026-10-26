@@ -29,6 +29,7 @@ function fakeApplyContext() {
     inject(_deps, callback) {
       const child = {
         logger: { warn() {} },
+        on() {},
         effect(fn) { return fn(); },
         settings: { configure() {} },
         agentPresets: { register: async () => () => {} },

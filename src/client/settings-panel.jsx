@@ -387,6 +387,11 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
               <span className={`preset-toggle-icon ${isOpen ? "open" : ""}`}>▶</span>
               <div className="preset-head-title">
                 <span>{preset.id || "未命名预设"}</span>
+                {preset.createMode && (
+                  <span className="inject-badge purple" style={{ fontWeight: 600 }}>
+                    模式: inject-{preset.id}
+                  </span>
+                )}
                 <span className="inject-badge" style={{ fontWeight: 500 }}>
                   {rules.length} 条替换规则 ({activeCount} 启用) · {turns.length} 个构造回合
                   {preset.systemPrompt?.trim() ? " · 1 系统段" : ""}
@@ -396,15 +401,15 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
 
             <div className="row" style={{ gap: 8 }} onClick={e => e.stopPropagation()}>
               <label
-                className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
-                title="勾选后默认启用本预设；可在展开区用「限定 agent preset」缩小范围（会话内仍可 /inject off 单独关闭）"
+                className={`inject-default-toggle ${preset.createMode ? "on" : ""}`}
+                title={`开启后将在全局注册 agent preset 模式「inject-${preset.id || "id"}」，会话切换至该模式自动生效`}
               >
                 <input
                   type="checkbox"
-                  checked={preset.defaultEnabled === true}
-                  onChange={e => patch({ defaultEnabled: e.target.checked })}
+                  checked={preset.createMode === true}
+                  onChange={e => patch({ createMode: e.target.checked })}
                 />
-                默认启用
+                创建为模式
               </label>
               <button type="button" className="ghost sm" onClick={onClone} title="克隆预设">复制</button>
               <button type="button" className="ghost sm" onClick={onExport} title="导出 JSON">导出</button>
@@ -450,33 +455,60 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
             )}
           </div>
 
-          <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-            <label className="inject-field shrink-0">
-              <span className="inject-field-label">限定 agent preset</span>
-              <input
-                type="text"
-                style={{ width: 230 }}
-                value={agentScope}
-                onChange={e => setAgentScope(e.target.value)}
-                onBlur={() => patch({ agentPresets: agentScope.split(/[\s,，]+/).filter(Boolean) })}
-                placeholder="逗号分隔，留空=全部"
-              />
-            </label>
-            <label className="inject-field shrink-0">
-              <span className="inject-field-label">限定模型</span>
-              <input
-                type="text"
-                style={{ width: 230 }}
-                value={modelScope}
-                onChange={e => setModelScope(e.target.value)}
-                onBlur={() => patch({ models: modelScope.split(/[\s,，]+/).filter(Boolean) })}
-                placeholder="模型 id 或 provider/model，逗号分隔"
-              />
-            </label>
-            <span className="hint-text" style={{ margin: 0 }}>
-              两个作用域都为空时对所有会话生效；勾选「默认启用」后，只有 agent preset 与模型都命中时才自动启用。
-            </span>
-          </div>
+          <details className="inject-advanced-details" style={{ marginBottom: 14 }}>
+            <summary className="inject-advanced-summary">
+              高级选项
+              {preset.defaultEnabled ? " · 已设为总是启用" : ""}
+              {preset.agentPresets?.length ? ` · 限定 preset (${preset.agentPresets.length})` : ""}
+              {preset.models?.length ? ` · 限定模型 (${preset.models.length})` : ""}
+            </summary>
+            <div className="inject-advanced-body">
+              <div className="row" style={{ gap: 10, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <label
+                  className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
+                  title="勾选后无需选择模式即在所有会话默认启用本预设（可配合下方限定范围缩小生效条件）"
+                >
+                  <input
+                    type="checkbox"
+                    checked={preset.defaultEnabled === true}
+                    onChange={e => patch({ defaultEnabled: e.target.checked })}
+                  />
+                  总是启用
+                </label>
+                <span className="hint-text" style={{ margin: 0 }}>
+                  无需在会话中手动选择 inject 模式即可对匹配的会话自动生效。
+                </span>
+              </div>
+
+              <div className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <label className="inject-field shrink-0">
+                  <span className="inject-field-label">限定 agent preset</span>
+                  <input
+                    type="text"
+                    style={{ width: 230 }}
+                    value={agentScope}
+                    onChange={e => setAgentScope(e.target.value)}
+                    onBlur={() => patch({ agentPresets: agentScope.split(/[\s,，]+/).filter(Boolean) })}
+                    placeholder="逗号分隔，留空=全部"
+                  />
+                </label>
+                <label className="inject-field shrink-0">
+                  <span className="inject-field-label">限定模型</span>
+                  <input
+                    type="text"
+                    style={{ width: 230 }}
+                    value={modelScope}
+                    onChange={e => setModelScope(e.target.value)}
+                    onBlur={() => patch({ models: modelScope.split(/[\s,，]+/).filter(Boolean) })}
+                    placeholder="模型 id 或 provider/model，逗号分隔"
+                  />
+                </label>
+                <span className="hint-text" style={{ margin: 0, flexBasis: "100%" }}>
+                  两个作用域都为空时对所有会话生效；仅在「总是启用」时作为过滤条件（例如限定仅特定模型自动加载）。
+                </span>
+              </div>
+            </div>
+          </details>
 
           <div className="inject-section-title" style={{ marginTop: 22 }}>
             <span>系统提示词段（写入宿主 system prompt，与构造回合并存）</span>
