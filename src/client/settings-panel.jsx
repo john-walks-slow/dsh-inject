@@ -466,7 +466,7 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
               <div className="row" style={{ gap: 10, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <label
                   className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
-                  title="勾选后无需选择模式即在所有会话默认启用本预设（可配合下方限定范围缩小生效条件）"
+                  title="匹配的会话默认启用本预设"
                 >
                   <input
                     type="checkbox"
@@ -475,9 +475,6 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
                   />
                   总是启用
                 </label>
-                <span className="hint-text" style={{ margin: 0 }}>
-                  无需在会话中手动选择 inject 模式即可对匹配的会话自动生效。
-                </span>
               </div>
 
               <div className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -504,28 +501,27 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
                   />
                 </label>
                 <span className="hint-text" style={{ margin: 0, flexBasis: "100%" }}>
-                  两个作用域都为空时对所有会话生效；仅在「总是启用」时作为过滤条件（例如限定仅特定模型自动加载）。
+                  留空=全部；仅在「总是启用」时作为过滤条件。
                 </span>
               </div>
             </div>
           </details>
 
           <div className="inject-section-title" style={{ marginTop: 22 }}>
-            <span>系统提示词段（写入宿主 system prompt，与构造回合并存）</span>
+            <span>系统提示词段</span>
           </div>
           <textarea
             className="inject-turn-textarea"
             value={preset.systemPrompt ?? ""}
             onChange={e => patch({ systemPrompt: e.target.value })}
-            placeholder="可选：作为 system prompt 的一段注入。留空不注入。"
+            placeholder="作为 system prompt 的一段，留空不注入"
           />
           <p className="hint-text" style={{ margin: "6px 0 0" }}>
-            系统段遵守宿主的提示词组装规则；complete 系统提示模式下会被宿主丢弃。
-            需要「追加到系统消息末尾」的语义时，用下方 system 回合。
+            complete 系统提示模式下会被宿主丢弃。
           </p>
 
           <div className="inject-section-title">
-            <span>自动替换规则（仅改写发给模型的请求，保护原始聊天）</span>
+            <span>自动替换规则</span>
             <div className="row" style={{ gap: 6 }}>
               <button type="button" className="ghost sm" onClick={() => toggleAllRules(true)}>全部启用</button>
               <button type="button" className="ghost sm" onClick={() => toggleAllRules(false)}>全部停用</button>
@@ -551,7 +547,7 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
           </div>
 
           {rules.length === 0 && (
-            <p className="hint-text" style={{ padding: "8px 0" }}>暂无替换规则。点击上方「添加规则」或「导入规则」。</p>
+            <p className="hint-text" style={{ padding: "8px 0" }}>暂无替换规则。</p>
           )}
 
           {filteredRules.map(rule => {
@@ -577,7 +573,7 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
           })}
 
           <div className="inject-section-title" style={{ marginTop: 22 }}>
-            <span>构造回合（消息级注入：system 追加到系统消息末尾，其它角色插在原会话消息之前）</span>
+            <span>构造回合（按顺序插在原会话消息之前）</span>
           </div>
           <TurnsEditor turns={turns} onChange={nextTurns => patch({ turns: nextTurns })} />
         </div>
@@ -665,18 +661,18 @@ function PlaygroundPanel({ presets }) {
       </div>
 
       <div className="col" style={{ gap: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 600 }}>输入测试文本：</span>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>输入文本：</span>
         <textarea
           style={{ minHeight: 80, width: "100%", fontFamily: "ui-monospace, monospace" }}
           value={inputSample}
           onChange={e => setInputSample(e.target.value)}
-          placeholder="在此输入文本，下方将实时展示经过规则替换后的模型请求内容..."
+          placeholder="输入文本，实时预览替换结果"
         />
       </div>
 
       {result.skippedSlash && (
         <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 6, background: "var(--inject-brand-bg)", color: "var(--inject-brand)", fontSize: 12 }}>
-          ⚡ 检测到斜杠指令（<code>/command</code>），安全机制已自动跳过替换，原样保留。
+          ⚡ 斜杠指令已跳过替换。
         </div>
       )}
 
@@ -888,10 +884,6 @@ function ImportExportModal({
 
         {tab === "hub" && (
           <div className="col" style={{ gap: 14 }}>
-            <p className="hint-text" style={{ margin: 0 }}>
-              导入后即为普通预设，可自由编辑或删除。
-            </p>
-
             <div className="inject-hub-list">
               {HUB_ENTRIES.map(({ meta, inline }) => (
                 <HubCard
@@ -912,7 +904,7 @@ function ImportExportModal({
             }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>自定义链接导入</span>
               <p className="hint-text" style={{ margin: "4px 0 8px" }}>
-                支持输入任意公开的 Markdown 或 JSON 规则链接。
+                公开的 Markdown / JSON 链接。
               </p>
               <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                 <input
@@ -945,7 +937,7 @@ function ImportExportModal({
         {tab === "import" && (
           <div className="col" style={{ gap: 12 }}>
             <p className="hint-text" style={{ margin: 0 }}>
-              支持粘贴 Keysmith 格式（如 <code>[{JSON.stringify({ from: "A", to: "B" })}]</code>）、<code>{"{ rules: [...] }"}</code> 或完整预设 JSON。
+              支持 Keysmith 规则数组、<code>{"{ rules: [...] }"}</code> 或完整预设 JSON。
             </p>
 
             <textarea
@@ -1100,7 +1092,7 @@ export function SettingsPanel({ scope }) {
         <div className="inject-title-group">
           <h2 className="inject-main-title" style={{ margin: 0 }}>dsh-inject</h2>
           <p className="inject-desc">
-            为模型请求提供请求侧替换规则与开头回合构造（不改写界面与历史记录）。支持 Keysmith 生态与规约兼容。
+            请求侧替换规则与构造回合注入，不改历史记录；兼容 Keysmith 规则。
           </p>
         </div>
 
@@ -1145,13 +1137,13 @@ export function SettingsPanel({ scope }) {
         <div className="col" style={{ gap: 12 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
             <span className="hint-text">
-              在会话中输入 <code>/inject on 预设 id</code> 启用（多个用逗号分隔）、<code>/inject off</code> 关闭；标记「默认启用」的预设对所有会话生效。
+              会话内用 <code>/inject on 预设 id</code> 启用、<code>/inject off</code> 关闭。
             </span>
             <div className="row" style={{ gap: 6 }}>
               <button
                 type="button"
                 className="ghost sm"
-                title="把尚未加入的内置预设补回列表；已存在的 id 不会被覆盖"
+                title="补回未加入的内置预设"
                 onClick={() => setDraft(current => ({ ...current, presets: mergeBuiltinPresets(current.presets) }))}
               >
                 补回内置预设
@@ -1212,7 +1204,7 @@ export function SettingsPanel({ scope }) {
         <div className="col" style={{ gap: 12 }}>
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
             <span className="hint-text">
-              模板可在此预先维护，或在聊天输入框的「注入」浮层（/inject-turn）中快速载入插入。
+              模板供 /inject-turn 与聊天输入框浮层载入。
             </span>
             <button
               type="button"

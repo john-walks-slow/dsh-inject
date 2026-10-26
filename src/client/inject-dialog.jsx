@@ -117,14 +117,13 @@ export function InjectDialog({ sessionId, scope, onClose }) {
           <strong>插入构造回合</strong>
           <button type="button" className="ghost" onClick={onClose}>关闭</button>
         </div>
-        <p className="hint">构造回合只进入模型请求，不改写会话记录；确认后会话里会留下一条可折叠的注入记录。</p>
+        <p className="hint">只进入模型请求，不改写会话记录；确认后会话里会留一条注入记录。</p>
 
         <div className="row" style={{ margin: "10px 0" }}>
           <select defaultValue="" onChange={event => { loadTemplate(event.target.value); event.target.value = ""; }}>
             <option value="">载入模板…</option>
             {templates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
           </select>
-          <span className="hint">或直接在下面编辑</span>
         </div>
 
         <TurnRows turns={turns} onChange={setTurns} firstField={firstField} />

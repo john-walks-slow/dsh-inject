@@ -208,16 +208,17 @@ function registerCommands(ctx, rawConfig) {
   };
 }
 
-/** 把构造回合插到请求最前面；系统消息与原有系统消息合并，保持 system 仍是首条。 */
+/**
+ * 把构造回合按声明顺序插在原会话消息之前。
+ *
+ * 请求以 system 开头时插在它之后（宿主系统提示仍是首条消息）；排在最前的 system 回合
+ * 由 provider 连同系统提示一起提升，排在对话之后的则成为对话中的 system 更新——
+ * 位置就是你排的位置，不做搬运。
+ */
 export function insertPrefix(messages, prefix) {
   if (!prefix.length) return messages;
-  const prefixSystem = prefix.filter(message => message.role === "system");
-  const prefixRest = prefix.filter(message => message.role !== "system");
-  const currentSystem = messages[0]?.role === "system" ? messages[0] : undefined;
-  const mergedSystem = [...(currentSystem?.content ?? []), ...prefixSystem.flatMap(message => message.content)];
-  const system = mergedSystem.length ? [{ ...(currentSystem ?? prefixSystem[0]), content: mergedSystem }] : [];
-  const rest = currentSystem ? messages.slice(1) : messages;
-  return [...system, ...prefixRest, ...rest];
+  const head = messages[0]?.role === "system" ? 1 : 0;
+  return [...messages.slice(0, head), ...prefix, ...messages.slice(head)];
 }
 
 /** 读取请求体并解析为 JSON 对象；超出上限或非法 JSON 时抛错。 */

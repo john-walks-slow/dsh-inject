@@ -37,7 +37,7 @@ test("normalizes and constructs role-aware prefix messages", () => {
   assert.equal(messages[1].role, "user");
 });
 
-test("keeps system first when merging the request prefix", async () => {
+test("keeps the declared turn order behind the host system message", async () => {
   const { insertPrefix } = await import("../src/index.js");
   const origin = [
     { role: "system", content: [{ type: "text", text: "base prompt" }] },
@@ -48,9 +48,22 @@ test("keeps system first when merging the request prefix", async () => {
     { role: "user", content: [{ type: "text", text: "injected" }] }
   ];
   const result = insertPrefix(origin, prefix);
-  assert.equal(result[0].role, "system");
-  assert.deepEqual(result[0].content.map(part => part.text), ["base prompt", "extra rules"]);
-  assert.deepEqual(result.slice(1).map(message => message.content[0].text), ["injected", "hello"]);
+  assert.deepEqual(result.map(message => message.role), ["system", "system", "user", "user"]);
+  assert.deepEqual(result.map(message => message.content[0].text), ["base prompt", "extra rules", "injected", "hello"]);
+});
+
+test("keeps a system turn after dialogue turns where the author put it", async () => {
+  const { insertPrefix } = await import("../src/index.js");
+  const origin = [
+    { role: "system", content: [{ type: "text", text: "base prompt" }] },
+    { role: "user", content: [{ type: "text", text: "hello" }] }
+  ];
+  const prefix = [
+    { role: "user", content: [{ type: "text", text: "injected user" }] },
+    { role: "system", content: [{ type: "text", text: "late rules" }] }
+  ];
+  const result = insertPrefix(origin, prefix);
+  assert.deepEqual(result.map(message => message.role), ["system", "user", "system", "user"]);
 });
 
 test("prepends before the whole history when no system message exists", async () => {
