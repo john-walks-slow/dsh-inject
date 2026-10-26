@@ -24,7 +24,7 @@ dsh plugin --profile web add dsh-inject
 - **会话级覆盖**：`/inject <预设 id>` / `/inject off` 只作用于当前会话，且总是优先于预设的「默认启用」。
 - **agent preset 级默认启用**：勾选「默认启用」后可在展开区填「限定 agent preset」（逗号分隔，留空=全部）；填了之后只在该会话当前 agent preset 命中时默认启用。当前 preset 由 DSH 的 `agentPreset` 投影读取，运行中切换即刻按新 preset 重算。
 - **模型级默认启用**：展开区还可填「限定模型」（模型 id 或 `provider/model`，逗号分隔，留空=全部）；只有当前请求的模型命中时该预设才自动启用。显式 `/inject on` 不受模型限制。
-- **两条注入通道**：系统段进入宿主的 system prompt（受 complete 模式影响）；构造回合进入请求的消息列表。两者可同时启用，最终顺序是：宿主系统段（含本插件的系统段）→ system 构造回合（追加到系统消息末尾）→ 其它构造回合（插在原会话消息之前）→ 原会话消息。
+- **两条注入通道**：系统段进入宿主的 system prompt（受 complete 模式影响，inject 模式下改由请求侧投递）；构造回合进入请求的消息列表。两者可同时启用，最终顺序是：宿主系统段（含本插件的系统段）→ system 构造回合（追加到系统消息末尾）→ 其它构造回合（插在原会话消息之前）→ 原会话消息。
 - **id 即句柄**：预设只有 id 一个标识，不含空格、逗号与斜杠；设置页里 id 就是标题，可直接改。
 - **零副作用**：启用状态是进程内状态，不写入会话日志；关掉预设等于从未启用。
 - 会话级状态在进程重启后重置（回到只剩「默认启用」预设的状态）。
@@ -87,7 +87,7 @@ dsh plugin --profile web add dsh-inject
 - **`nsfw`**：成人文学创作规约与场景回合；默认开启「创建为模式」，注入模式 `inject-nsfw`。
 - **`authority`**：把 DSH 渲染的工作区指令免责句（“may be relevant / do not override”）改写为强制指令，并附一段简短的「操作者权威 + 先交付后解释」系统段；默认关闭，用 `/inject on authority` 启用。
 
-每一个 inject preset 都可以 toggle「创建为模式」开关。开启后，插件会向宿主动态注册名为 `inject-{id}` 的 agent preset，组合直接取宿主的 `standard` 预设——工具集、工作区指令（AGENTS.md）读取等与标准模式一致；会话顶部切换至该模式时，对应 inject 预设自动生效。过去的「总是启用」以及「限定 agent preset / 模型」筛选作为高级选项保留。没有 `agentPresets` 服务、或没有声明 `standard` 预设的 profile（例如 headless）不会注册模式，inject 预设仍可用 `/inject` 手动启用。
+每一个 inject preset 都可以 toggle「创建为模式」开关。开启后，插件会向宿主动态注册名为 `inject-{id}` 的 agent preset：**能力**取宿主 `standard` 预设（工具集、工作区指令（AGENTS.md）读取、skills 等与标准模式一致），**身份**则整段让位——persona 标 complete 且留空，宿主的默认身份与其它系统段都不进请求，该模式的文字由对应 inject preset 自己的系统段与构造回合供给。会话顶部切换至该模式时，对应 inject 预设自动生效。过去的「总是启用」以及「限定 agent preset / 模型」筛选作为高级选项保留。没有 `agentPresets` 服务、或没有声明 `standard` 预设的 profile（例如 headless）不会注册模式，inject 预设仍可用 `/inject` 手动启用。
 
 ## Keysmith 兼容
 
@@ -119,8 +119,8 @@ dsh plugin --profile web add dsh-inject
 - 未对「每次请求实际注入了哪几条」逐请求留痕：常驻预设的注入内容由启用（含自动启用）时的那条记录行说明。
 - 会话级启用状态是进程内的：重启后回到只剩「默认启用」预设的状态。
 - 系统段依赖宿主的 `systemPrompt` 服务；缺失时该段不注入，其余规则与构造回合不受影响。
-- 系统段遵循宿主的系统提示组装规则：如果当前 agent preset 使用 complete 系统提示（例如 minimal），宿主只保留 complete 段，系统段不会进入请求；这类模式请用「开头构造回合」承载系统文字。
-- 「创建为模式」的组合来源是宿主声明的 `standard` preset；profile 没有它时不注册模式（进程日志里会说明）。
+- 系统段遵循宿主的系统提示组装规则：如果当前 agent preset 使用 complete 系统提示（例如 minimal），宿主只保留 complete 段，系统段不会进入请求。inject 模式（`inject-{id}`）就是这种情况，插件因此在那里把系统段改由请求侧的 system 构造回合投递，同一段文字仍只投一次。
+- 「创建为模式」的能力行取自宿主声明的 `standard` preset，身份行则替换为空 + complete：宿主默认身份、工具说明、plan 政策等系统段在该模式下不进请求（宿主 complete 的语义），工具 schema、工作区指令（AGENTS.md）与 skills 不受影响。profile 没有 `standard` preset 时不注册模式（进程日志里会说明）。
 - `authority` 只匹配 DSH 当前版本的官方免责原文；宿主改文案后需要更新规则（设置页可直接改）。
 
 ## License

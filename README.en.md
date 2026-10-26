@@ -24,7 +24,7 @@ No configuration needed: the package ships its own `dsh.bundle.patch`; restart d
 - **Session-level Override**: `/inject <preset-id>` or `/inject off` only applies to the current session and takes precedence over global defaults.
 - **Agent-preset Scoped Defaults**: After marking "Enable by default", an expanded preset can list agent preset ids (comma separated, empty = all). A non-empty list makes the default apply only when the live session's agent preset matches. The live preset comes from DSH's `agentPreset` projection, so a runtime preset switch takes effect on the next request.
 - **Model-scoped Defaults**: The same expanded area accepts model ids or `provider/model` entries (comma separated, empty = all). A non-empty list makes the default apply only when the current request model matches. Explicit `/inject on` is not model-gated.
-- **Two Injection Channels**: System sections enter the host's system prompt (subject to complete-prompt modes); synthetic turns enter the request message list. Both may be active at once. Final order: host system sections (including this plugin's section) → `system` synthetic turns (appended to the system message) → other synthetic turns (inserted before the original conversation) → original messages.
+- **Two Injection Channels**: System sections enter the host's system prompt (subject to complete-prompt modes; inside an inject mode they are delivered on the request side instead); synthetic turns enter the request message list. Both may be active at once. Final order: host system sections (including this plugin's section) → `system` synthetic turns (appended to the system message) → other synthetic turns (inserted before the original conversation) → original messages.
 - **Zero Side Effects**: Enabled states are in-process memory states and are not written into session logs; turning off a preset leaves no residual state.
 - Session-specific states reset upon process restart (falling back to globally default-enabled presets).
 
@@ -82,7 +82,7 @@ With no user configuration, `dsh-inject` ships three inject presets:
 
 A third preset, **`authority`**, rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
 
-Every inject preset can toggle the "Create as Mode" switch. When enabled, the plugin registers an agent preset mode named `inject-{id}` whose composition is taken verbatim from the host's `standard` preset — the same tool set and workspace-instruction (AGENTS.md) reading as Standard mode; switching to this mode in a session automatically enables the matching inject preset. Legacy "always enabled" and agent preset / model filters are preserved under Advanced Options. Profiles without the `agentPresets` service, or without a declared `standard` preset (for example headless), do not register modes; inject presets remain available via `/inject`.
+Every inject preset can toggle the "Create as Mode" switch. When enabled, the plugin registers an agent preset mode named `inject-{id}`: its **capabilities** come from the host's `standard` preset (same tool set, workspace-instruction (AGENTS.md) reading and skills as Standard mode), while its **identity** hands the whole slot over — the persona row is marked complete and left empty, so the host's default identity and its other system sections never reach the request, and the mode's text comes from the inject preset's own system section and synthetic turns. Switching to this mode in a session automatically enables the matching inject preset. Legacy "always enabled" and agent preset / model filters are preserved under Advanced Options. Profiles without the `agentPresets` service, or without a declared `standard` preset (for example headless), do not register modes; inject presets remain available via `/inject`.
 
 ## Keysmith Compatibility
 
@@ -111,8 +111,8 @@ Settings → Import / Export → Built-in presets → "dsh-purge 破甲稿" → 
 - Synthetic `tool` roles are transformed into user context annotated with tool-result markers to avoid orphaned tool calls;
 - Injection audit rows appear in the message history and become visible after the first turn in a brand new session;
 - System sections require the host's `systemPrompt` service; when it is unavailable the section is skipped, while rules and synthetic turns still work;
-- System sections follow the host's prompt assembly rules. If the current agent preset uses a complete system prompt (for example `minimal`), the host keeps only the complete section and the system section is dropped; use head synthetic turns for those modes.
-- "Create as Mode" takes its composition from the host-declared `standard` preset; a profile without one registers no modes (the process log says so).
+- System sections follow the host's prompt assembly rules. If the current agent preset uses a complete system prompt (for example `minimal`), the host keeps only the complete section and the system section is dropped. An inject mode (`inject-{id}`) is exactly that case, so the plugin delivers the system section as a request-side `system` synthetic turn there, still exactly once.
+- "Create as Mode" takes its capability rows from the host-declared `standard` preset and replaces the identity row with an empty complete persona: the host's default identity, tool notes and plan policy sections are dropped in that mode (the host's complete semantics), while tool schemas, workspace instructions (AGENTS.md) and skills are unaffected. A profile without a `standard` preset registers no modes (the process log says so).
 
 ## License
 

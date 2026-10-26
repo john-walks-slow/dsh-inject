@@ -1,12 +1,14 @@
 /**
  * agent preset 动态注入：把启用了「创建为模式」的 inject preset 注册为宿主可选择的 agent preset。
  *
- * 组合不自带一份：直接取宿主已声明的 `standard` 预设的组合，工具集与工作区指令
- * （AGENTS.md）读取等因此与标准模式完全一致。inject 预设自己的文字仍由请求侧的
- * 系统段与构造回合供给，两者互不冲突。
+ * 能力与标准模式一致：组合的行直接取宿主已声明的 `standard` 预设，工具集、工作区指令
+ * （AGENTS.md）读取、skills 等因此不会掉。身份相反——persona 行标 `complete`，宿主只保留
+ * 该段（这里留空），默认身份与宿主其它系统段一概不进请求；该模式的文字由 inject 预设
+ * 自己的系统段与构造回合供给（见 index.js 的请求侧投递）。
  */
 
 const AGENT_PRESET_PLUGIN = "@deepseek-ai/dsh-agent-preset";
+const PERSONA_PLUGIN = "@deepseek-ai/dsh-persona";
 
 /** 作为组合来源的宿主 agent preset id。 */
 export const BASE_AGENT_PRESET = "standard";
@@ -31,6 +33,24 @@ export function declaredAgentPlugins(loader, id = BASE_AGENT_PRESET) {
   return null;
 }
 
+/**
+ * 把 standard 的组合行改造成 inject 模式的行：只换身份那一段，其余原样。
+ *
+ * persona 标 `complete` 后，宿主只保留这一段（空），默认身份、工具说明、plan 政策等
+ * 都让位给 inject 预设自己的文字。
+ *
+ * @param plugins standard 预设的组合行。
+ * @returns 改造后的行副本。
+ */
+export function injectModePlugins(plugins) {
+  const rows = structuredClone(plugins);
+  const persona = { id: "persona", name: PERSONA_PLUGIN, config: { prefix: "", complete: true } };
+  const index = rows.findIndex(row => row?.name === PERSONA_PLUGIN);
+  if (index === -1) rows.unshift(persona);
+  else rows[index] = { ...rows[index], config: { ...persona.config } };
+  return rows;
+}
+
 /** 为指定的 inject preset 生成对应的 agent preset 定义（id 为 inject-{id}）。 */
 export function createAgentPresetDefinition(preset, plugins) {
   if (!Array.isArray(plugins) || plugins.length === 0) {
@@ -42,7 +62,7 @@ export function createAgentPresetDefinition(preset, plugins) {
     name: id,
     description: preset.description || `dsh-inject 注入模式 (${preset.id})`,
     order: 90,
-    plugins: structuredClone(plugins)
+    plugins: injectModePlugins(plugins)
   };
 }
 

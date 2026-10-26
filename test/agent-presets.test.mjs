@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   declaredAgentPlugins,
+  injectModePlugins,
   createAgentPresetDefinition,
   createAgentPresetManager
 } from "../src/agent-presets.js";
@@ -49,7 +50,7 @@ test("declaredAgentPlugins: 未声明该预设时返回 null", () => {
   assert.equal(declaredAgentPlugins(fakeLoader([{ options: { name: "@deepseek-ai/dsh-agent-preset", config: { id: "minimal", plugins: [] } } }])), null);
 });
 
-test("createAgentPresetDefinition: 沿用 standard 组合生成 inject-{id} 模式定义", () => {
+test("createAgentPresetDefinition: 沿用 standard 能力但换掉身份", () => {
   const plugins = declaredAgentPlugins(fakeLoader([standardEntry()]));
   const definition = createAgentPresetDefinition({ id: "my-preset", description: "测试预设" }, plugins);
 
@@ -57,14 +58,23 @@ test("createAgentPresetDefinition: 沿用 standard 组合生成 inject-{id} 模�
   assert.equal(definition.name, "inject-my-preset");
   assert.equal(definition.description, "测试预设");
   assert.equal(definition.order, 90);
-  assert.deepEqual(definition.plugins, plugins);
   assert.notEqual(definition.plugins, plugins);
 
-  // 标准模式的 persona 与指令读取都保留，不再退化成 complete + 空 prefix
-  const persona = definition.plugins.find(plugin => plugin.id === "persona");
-  assert.equal(persona.config.complete, undefined);
-  assert.match(persona.config.prefix, /coding agent/);
-  assert.ok(definition.plugins.some(plugin => plugin.id === "agent-instructions"));
+  // 能力行原样保留：工具、工作区指令读取、skills 等与标准模式一致
+  for (const id of ["agent-instructions", "tool-bash", "tool-fs"]) {
+    assert.deepEqual(definition.plugins.find(row => row.id === id), plugins.find(row => row.id === id));
+  }
+
+  // 身份段让位：complete + 空 prefix，默认身份与宿主其它系统段都不进请求
+  const persona = definition.plugins.find(row => row.name === "@deepseek-ai/dsh-persona");
+  assert.deepEqual(persona.config, { prefix: "", complete: true });
+  assert.equal(plugins.find(row => row.id === "persona").config.prefix, "You are a coding agent powered by the {{model}} model.");
+});
+
+test("injectModePlugins: standard 缺 persona 行时补一行空身份", () => {
+  const rows = injectModePlugins([{ id: "tool-fs", name: "@deepseek-ai/dsh-tool-fs" }]);
+  assert.deepEqual(rows[0], { id: "persona", name: "@deepseek-ai/dsh-persona", config: { prefix: "", complete: true } });
+  assert.equal(rows[1].id, "tool-fs");
 });
 
 test("createAgentPresetDefinition: 缺组合时显式报错", () => {

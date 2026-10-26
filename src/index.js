@@ -3,7 +3,7 @@ import { createAgentPresetManager } from "./agent-presets.js";
 import { activePresetSummary, autoActivationText, INJECT_USAGE, parseInjectInput, presetInjectionSummary, previewText } from "./command-input.js";
 import { defaultPresetIds, normalizeConfig, normalizeTurnMessage } from "./schema.js";
 import { createSessionState, MAX_PENDING_TURNS } from "./session-state.js";
-import { templateToMessages, transformMessages } from "./transform.js";
+import { systemPromptTurns, templateToMessages, transformMessages } from "./transform.js";
 
 export const name = "dsh-inject";
 export const inject = ["agents", "llm", "commands", "settings", "sessionProjections", "loader"];
@@ -87,6 +87,12 @@ function agentPresetOf(ctx, session) {
 function currentAgentPresetId(ctx, id) {
   const agent = ctx.agents.get(id);
   return agent === undefined ? null : agentPresetOf(ctx, agent.session);
+}
+
+/** 该会话是否跑在本插件注册的 inject 模式（inject-{id}）里。 */
+function isInjectMode(config, agentPresetId) {
+  if (typeof agentPresetId !== "string" || !agentPresetId.startsWith("inject-")) return false;
+  return config.presets.some(preset => `inject-${preset.id}` === agentPresetId);
 }
 
 /** 该会话当前生效的预设：默认启用项叠加会话内显式开关。 */
@@ -378,12 +384,19 @@ export function apply(ctx, rawConfig = {}) {
     const hasRule = presets.some(preset => preset.rules.some(rule => rule.enabled && rule.pattern));
     const hasSection = presets.some(preset => typeof preset.systemPrompt === "string" && preset.systemPrompt.trim().length > 0);
     const pending = sessions.take(id);
-    const prefix = [...presets.flatMap(preset => preset.turns), ...pending];
+    const agentPresetId = currentAgentPresetId(ctx, id);
+    // inject 模式的 persona 是 complete：宿主只保留身份段（空），系统段进不了请求，
+    // 因此这些模式里把预设的系统段当作 system 回合投递，同一段文字仍只投一次。
+    const foldSection = isInjectMode(config, agentPresetId);
+    const prefix = [
+      ...presets.flatMap(preset => [...(foldSection ? systemPromptTurns(preset) : []), ...preset.turns]),
+      ...pending
+    ];
     if (!prefix.length && !hasRule && !hasSection) return next();
     const rewritten = transformMessages(options.messages, presets);
     const messages = insertPrefix(rewritten, templateToMessages(prefix));
     if (messages === options.messages) return next();
-    announceAutoPresets(ctx, id, presets, currentAgentPresetId(ctx, id));
+    announceAutoPresets(ctx, id, presets, agentPresetId);
     const request = { ...options, messages };
     transformedRequests.add(request);
     return ctx.llm.stream(request);
