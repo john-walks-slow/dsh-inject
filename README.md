@@ -97,6 +97,18 @@ npm install dsh-inject
 - **一键导入**：设置页提供「导入 Keysmith 规则」入口，支持一键批量解析粘贴的 Keysmith 规则包或规则数组。
 - **安全保护机制**：对以 `/` 开头的斜杠命令以及 `<system-reminder>`、`<command-name>` 等系统注入标签自动跳过改写，避免误伤系统指令或命令参数。唯一例外是显式选择「工作区指令」目标的规则：它只改写 `source.kind === "agent-instructions"` 的工作区指令段。
 
+## 从 dsh-purge 迁移
+
+[dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)（[镜像](https://github.com/mmparko/dsh-purge)）是 DSH 社区早期最流行的破甲插件，原仓库已删除、上游停更。它的做法是给宿主落盘打补丁；本插件不改宿主，因此可以把它那篇提示词作为**普通预设**导入：
+
+设置页 →「导入 / 导出」→「内置预设」→「dsh-purge 破甲稿」→ 导入，然后 `/inject on dsh-purge` 启用。
+
+- 正文与 dsh-purge v1.1.71 的原稿逐字一致（原文以 AES-256-GCM 密封在其 `lib/asset-table.js`，这里只把换行统一成 LF）。导入后可自由编辑、删除。
+- 导入后作为 **system 构造回合**注入，也就是说在 minimal 等 complete 系统提示模式下同样生效。
+- 不默认启用、不自动包含：只有点过「导入」的会话/配置里才有它。
+- 出处与许可：作者 **YuJunZhiXue（小杨）**，MIT License，`Copyright (c) 2026 小杨`。原作者的署名要求与非盈利条款一并沿用：不得用于卖课、卖插件、卖 token、倒卖等收费行为。
+- 该稿约 21000 字符（约 7–9K tokens），每轮都会随请求发出；作者本人也说明公开稿用的人越多、被模型标记后效果越差。需要更省 token 的常驻方案时，用内置的 `authority` 预设。
+
 ## 已知限制
 
 - 未在界面上标记被替换的片段（原文照旧显示）。

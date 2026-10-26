@@ -10,6 +10,8 @@ import {
   emptyPreset,
   emptyRule,
   mergeBuiltinPresets,
+  builtinCatalogPreset,
+  BUILTIN_IMPORT_CATALOG,
   assemblePresetFromRemote
 } from "../src/client/config-store.js";
 
@@ -121,4 +123,38 @@ test("config-store: assemblePresetFromRemote parses markdown text into system tu
   assert.equal(preset.rules.length, 1);
   assert.equal(preset.rules[0].pattern, "A");
   assert.equal(preset.rules[0].replacement, "B");
+});
+
+test("config-store: 内置导入项的破甲稿逐字保留且每次导入都是新对象", async () => {
+  const { PURGE_PROMPT } = await import("../src/client/purge-prompt.js");
+  const meta = BUILTIN_IMPORT_CATALOG.find(item => item.id === "dsh-purge");
+  assert.ok(meta);
+  assert.equal(meta.url, undefined);
+  assert.equal(meta.license, "MIT");
+  assert.equal(meta.chars, PURGE_PROMPT.length);
+  assert.match(meta.repo, /dsh-purge/);
+
+  const first = builtinCatalogPreset(meta);
+  const second = builtinCatalogPreset(meta);
+  assert.equal(first.id, "dsh-purge");
+  assert.equal(first.defaultEnabled, false);
+  assert.equal(first.turns.length, 1);
+  assert.equal(first.turns[0].role, "system");
+  assert.equal(first.turns[0].text, PURGE_PROMPT);
+  assert.match(PURGE_PROMPT, /^<\|im_start\|>system:<project_instructions>/);
+  assert.equal(first.turns[0].text.length, 20969);
+  assert.notEqual(first.turns[0], second.turns[0]);
+  assert.notEqual(first.turns, second.turns);
+  first.turns[0].text = "mutated";
+  assert.equal(second.turns[0].text, PURGE_PROMPT);
+});
+
+test("config-store: builtinCatalogPreset 只处理内置目录项", () => {
+  assert.equal(builtinCatalogPreset(undefined), null);
+  assert.equal(builtinCatalogPreset({ id: "remote", url: "https://example.com/x.md" }), null);
+});
+
+test("config-store: 破甲稿不在默认预设里，必须显式导入", async () => {
+  const { defaultPresets } = await import("../src/schema.js");
+  assert.equal(defaultPresets().some(preset => preset.id === "dsh-purge"), false);
 });

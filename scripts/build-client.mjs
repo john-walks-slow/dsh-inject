@@ -11,6 +11,7 @@ await build({
   outfile: "lib/client.bundle.js",
   jsx: "automatic",
   target: "es2022",
+  charset: "utf8",
   external: ["react", "react-dom", "react-dom/*", "react/jsx-runtime", "@deepseek-ai/*"],
   logLevel: "info"
 });

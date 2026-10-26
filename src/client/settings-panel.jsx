@@ -15,6 +15,8 @@ import {
   parsePresets,
   simulateReplacement,
   REMOTE_PRESET_CATALOG,
+  BUILTIN_IMPORT_CATALOG,
+  builtinCatalogPreset,
   fetchRemoteText,
   assemblePresetFromRemote
 } from "./config-store.js";
@@ -718,6 +720,14 @@ function ImportExportModal({
     }
   };
 
+  const handleBuiltinImport = meta => {
+    const preset = builtinCatalogPreset(meta);
+    if (!preset) return;
+    onAppendPreset(preset);
+    setFetchNotice(`✓ 已导入「${meta.name}」，用 /inject on ${preset.id} 启用`);
+    setTimeout(() => setFetchNotice(""), 5000);
+  };
+
   const handleCustomFetch = async () => {
     const url = customUrl.trim();
     if (!url) return;
@@ -812,6 +822,36 @@ function ImportExportModal({
 
         {tab === "hub" && (
           <div className="col" style={{ gap: 14 }}>
+            <div className="col" style={{ gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>内置预设</span>
+              <div className="inject-hub-list">
+                {BUILTIN_IMPORT_CATALOG.map(meta => (
+                  <div key={meta.id} className="inject-hub-card">
+                    <div className="inject-hub-card-main">
+                      <div className="inject-hub-title-row">
+                        <span className="inject-hub-title">{meta.name}</span>
+                        <span className="inject-badge" style={{ background: "var(--inject-brand-bg)", color: "var(--inject-brand)" }}>
+                          {meta.tag}
+                        </span>
+                        <span className="inject-badge" style={{ background: "var(--inject-success-bg)", color: "var(--inject-success)", fontSize: 10 }}>
+                          {meta.license}
+                        </span>
+                      </div>
+                      <div className="inject-hub-desc">{meta.description}</div>
+                      <div className="inject-hub-meta">
+                        来源: <a href={meta.repo} target="_blank" rel="noreferrer">{meta.author}</a> · 正文 {meta.chars.toLocaleString()} 字符
+                      </div>
+                    </div>
+                    <div className="row" style={{ flexShrink: 0 }}>
+                      <button type="button" className="primary sm" onClick={() => handleBuiltinImport(meta)}>
+                        导入
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <p className="hint-text" style={{ margin: 0 }}>
               从 Keysmith 官方源获取最新指令集与替换规则（MIT 协议）。
             </p>

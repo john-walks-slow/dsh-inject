@@ -4,6 +4,7 @@
  */
 
 import { defaultPresets, defaultTemplates, normalizeConfig, normalizePreset, normalizeRule, normalizeTemplate, compileRule, applyRuleText, KEYSMITH_DEFAULT_RULES } from "../schema.js";
+import { PURGE_PRESET, PURGE_PROMPT_SOURCE } from "./purge-prompt.js";
 
 export const EMPTY_CONFIG = { presets: [], templates: [] };
 
@@ -150,6 +151,35 @@ export function simulateReplacement(text, rules, role = "user") {
   }
 
   return { output: currentText, hits, skippedSlash: false };
+}
+
+/**
+ * 随插件内置、无需联网的导入项。导入后是一个普通预设，可自由编辑或删除。
+ */
+export const BUILTIN_IMPORT_CATALOG = [
+  {
+    id: PURGE_PRESET.id,
+    name: "dsh-purge 破甲稿",
+    tag: "破甲稿",
+    author: PURGE_PROMPT_SOURCE.author,
+    license: PURGE_PROMPT_SOURCE.license,
+    repo: PURGE_PROMPT_SOURCE.mirror,
+    chars: PURGE_PRESET.turns[0].text.length,
+    description: "dsh-purge 的内置提示词，原样收录，未做删改。导入后作为 system 构造回合注入，不需要给宿主打补丁。",
+    inline: PURGE_PRESET
+  }
+];
+
+/** 内置目录条目的预设副本；每次调用返回新对象，避免编辑到目录里的原件。 */
+export function builtinCatalogPreset(meta) {
+  if (!meta?.inline) return null;
+  return normalizePreset({
+    ...meta.inline,
+    agentPresets: [...(meta.inline.agentPresets ?? [])],
+    models: [...(meta.inline.models ?? [])],
+    rules: (meta.inline.rules ?? []).map(rule => ({ ...rule })),
+    turns: (meta.inline.turns ?? []).map(turn => ({ ...turn }))
+  });
 }
 
 export const REMOTE_PRESET_CATALOG = [

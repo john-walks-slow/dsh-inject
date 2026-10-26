@@ -92,6 +92,18 @@ A third preset, **`authority`**, rewrites DSH's workspace-instruction disclaimer
 - **One-click Import**: Settings view includes a bulk import modal supporting pasted JSON rule arrays;
 - **Safety Safeguards**: Automatically protects slash commands starting with `/` and system reminder tags (`<system-reminder>`, `<command-name>`) from being altered. The one exception is a rule that explicitly targets "workspace instructions": it only rewrites messages whose `source.kind` is `agent-instructions`.
 
+## Migrating from dsh-purge
+
+[dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) ([mirror](https://github.com/mmparko/dsh-purge)) was the most popular early DSH jailbreak plugin; its original repository is gone and upstream has stopped. It worked by patching the host on disk. This plugin does not touch the host, so its prompt can be imported as an ordinary preset:
+
+Settings → Import / Export → Built-in presets → "dsh-purge 破甲稿" → Import, then enable it with `/inject on dsh-purge`.
+
+- The body is verbatim from dsh-purge v1.1.71 (the original is AES-256-GCM sealed inside its `lib/asset-table.js`; only line endings are normalised to LF). Edit or delete it freely after importing.
+- It is injected as a **`system` synthetic turn**, so it also survives complete-prompt modes such as `minimal`.
+- It is neither default-enabled nor auto-included: only configurations that imported it carry it.
+- Attribution and licence: author **YuJunZhiXue**, MIT License, `Copyright (c) 2026 小杨`. The upstream attribution request and non-commercial term carry over: no paid resale, no course or token bundling.
+- Roughly 21,000 characters (about 7–9K tokens) on every request. Upstream itself notes that a public prompt degrades as more people use it. For a cheaper always-on option, use the built-in `authority` preset.
+
 ## Known Limitations
 
 - Substituted text spans are not highlighted in UI (original user text remains visible);
