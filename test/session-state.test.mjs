@@ -39,6 +39,22 @@ test("clear suppresses defaults until the session enables something explicitly",
   assert.deepEqual(sessions.activeIds("s2", ["preset-a"]), ["preset-a"]);
 });
 
+test("announced presets are tracked per session and survive repeated marks", () => {
+  const sessions = createSessionState();
+  assert.deepEqual([...sessions.announcedIds("s1")], []);
+  sessions.markAnnounced("s1", ["preset-a"]);
+  sessions.markAnnounced("s1", ["preset-a", "preset-b"]);
+  assert.deepEqual([...sessions.announcedIds("s1")], ["preset-a", "preset-b"]);
+  assert.deepEqual([...sessions.announcedIds("s2")], []);
+});
+
+test("drop clears announced presets", () => {
+  const sessions = createSessionState();
+  sessions.markAnnounced("s1", ["preset-a"]);
+  sessions.drop("s1");
+  assert.deepEqual([...sessions.announcedIds("s1")], []);
+});
+
 test("pending turns are consumed exactly once", () => {
   const sessions = createSessionState();
   sessions.queue("s1", [{ role: "user", text: "injected" }]);

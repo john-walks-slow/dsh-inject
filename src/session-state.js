@@ -14,6 +14,8 @@ export function createSessionState() {
   const overrides = new Map();
   const cleared = new Set();
   const pending = new Map();
+  /** 已经落过「自动启用」记录的预设：默认启用只在首次生效时留一条记录。 */
+  const announced = new Map();
 
   return {
     /**
@@ -42,6 +44,19 @@ export function createSessionState() {
       cleared.add(id);
     },
 
+    /** 本会话已经记录过自动启用的预设 id。 */
+    announcedIds(id) {
+      return announced.get(id) ?? new Set();
+    },
+
+    /** 记下自动启用已落记录，避免同一预设每次请求都重复写一行。 */
+    markAnnounced(id, presetIds) {
+      if (!presetIds.length) return;
+      const set = new Set(announced.get(id) ?? []);
+      for (const presetId of presetIds) set.add(presetId);
+      announced.set(id, set);
+    },
+
     /**
      * 把构造回合排进该会话的下一次请求。
      * @returns 新队列长度；超过上限返回 `null`，调用方据此拒绝本次注入。
@@ -66,6 +81,7 @@ export function createSessionState() {
       overrides.delete(id);
       cleared.delete(id);
       pending.delete(id);
+      announced.delete(id);
     }
   };
 }

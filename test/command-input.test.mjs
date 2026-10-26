@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { activePresetSummary, parseInjectInput, presetInjectionSummary, previewText } from "../src/command-input.js";
+import { activePresetSummary, autoActivationText, parseInjectInput, presetInjectionSummary, previewText } from "../src/command-input.js";
 
 test("parseInjectInput: 省略 on 时按启用处理", () => {
   assert.deepEqual(parseInjectInput(" alpha"), { action: "on", ids: ["alpha"] });
@@ -43,6 +43,20 @@ test("presetInjectionSummary: 列出构造回合与启用的替换规则", () =>
     "  2. [user] 继续",
     "替换规则 1 条"
   ]);
+});
+
+test("autoActivationText: 写明命中的 agent preset 与各预设注入内容", () => {
+  const text = autoActivationText([
+    { id: "unrestricted", turns: [{ role: "system", text: "本地执行模式" }], rules: [] },
+    { id: "extra", turns: [], rules: [{ enabled: true, pattern: "a" }] }
+  ], "unrestricted");
+  assert.match(text, /^已自动启用：unrestricted、extra（agent preset：unrestricted）/);
+  assert.match(text, /unrestricted 注入：\n构造回合 1 条\n  1\. \[system\] 本地执行模式/);
+  assert.match(text, /extra 注入：\n替换规则 1 条/);
+});
+
+test("autoActivationText: agent preset 未知时给出明确标注", () => {
+  assert.match(autoActivationText([{ id: "g", turns: [], rules: [] }], null), /agent preset：未指定/);
 });
 
 test("activePresetSummary: 空状态与逐预设摘要", () => {
