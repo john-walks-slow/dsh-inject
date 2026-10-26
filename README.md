@@ -17,6 +17,8 @@ dsh plugin --profile web add dsh-inject
 
 安装后无需改配置：包内自带 `dsh.bundle.patch`，重启 dsh 即生效。
 
+> **兼容性**：面向 **dsh 0.2.1-rc.2 及以上**。宿主包全部走 `peerDependencies`（不随插件装进 profile），因此插件永远不会把旧版 `dsh-tools` / `dsh-commands` 之类带进 profile 顶掉宿主组件；在不兼容的 dsh 上，宿主会按 peer 检查**跳过**这个插件并给出提示，而不是让 dsh 起不来。
+
 ## 核心语义
 
 - **只改请求，不改会话**：自动替换发生在发给模型的请求副本上；会话记录和界面显示的原始消息保持不变。

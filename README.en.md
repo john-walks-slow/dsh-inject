@@ -17,6 +17,8 @@ dsh plugin --profile web add dsh-inject
 
 No configuration needed: the package ships its own `dsh.bundle.patch`; restart dsh to load it.
 
+> **Compatibility**: built for **dsh 0.2.1-rc.2 and later**. Every host package is declared as a `peerDependencies` entry (never installed into your profile), so the plugin can no longer shadow the installation's own `dsh-tools` / `dsh-commands` rows; on an incompatible dsh the host **skips** the plugin with a diagnostic instead of failing to start.
+
 ## Core Semantics
 
 - **Modifies Request Only, Not Chat History**: Automatic rewrites occur solely on the copy sent to the model; original messages displayed in the UI and stored in session logs remain completely untouched.
