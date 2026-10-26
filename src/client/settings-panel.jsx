@@ -29,6 +29,12 @@ const ROLES = [
   { id: "instructions", label: "工作区指令" }
 ];
 
+/** 导入面板的统一列表：内置条目与在线条目并列展示。 */
+const HUB_ENTRIES = [
+  ...BUILTIN_IMPORT_CATALOG.map(meta => ({ meta, inline: true })),
+  ...REMOTE_PRESET_CATALOG.map(meta => ({ meta, inline: false }))
+];
+
 const TURN_ROLES = [
   { id: "system", label: "系统", className: "system" },
   { id: "assistant", label: "助手", className: "assistant" },
@@ -669,6 +675,34 @@ function PlaygroundPanel({ presets }) {
   );
 }
 
+function HubCard({ meta, inline, busy, onImport }) {
+  return (
+    <div className="inject-hub-card">
+      <div className="inject-hub-card-main">
+        <div className="inject-hub-title-row">
+          <span className="inject-hub-title">{meta.name}</span>
+          <span className="inject-badge" style={{ background: "var(--inject-brand-bg)", color: "var(--inject-brand)" }}>
+            {meta.tag}
+          </span>
+          <span className="inject-badge" style={{ background: "var(--inject-success-bg)", color: "var(--inject-success)", fontSize: 10 }}>
+            {meta.license}
+          </span>
+        </div>
+        <div className="inject-hub-desc">{meta.description}</div>
+        <div className="inject-hub-meta">
+          来源: <a href={meta.repo} target="_blank" rel="noreferrer">{meta.author}</a>
+          {inline ? ` · 正文 ${meta.chars.toLocaleString()} 字符` : ` · 规则: ${meta.rules.length} 条`}
+        </div>
+      </div>
+      <div className="row" style={{ flexShrink: 0 }}>
+        <button type="button" className="primary sm" disabled={busy} onClick={() => onImport(meta)}>
+          {busy ? "导入中…" : "导入"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ImportExportModal({
   isOpen,
   onClose,
@@ -789,7 +823,7 @@ function ImportExportModal({
             className={`inject-tab-btn ${tab === "hub" ? "active" : ""}`}
             onClick={() => setTab("hub")}
           >
-            Keysmith 规则库
+            预设库
           </button>
           <button
             type="button"
@@ -822,69 +856,19 @@ function ImportExportModal({
 
         {tab === "hub" && (
           <div className="col" style={{ gap: 14 }}>
-            <div className="col" style={{ gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>内置预设</span>
-              <div className="inject-hub-list">
-                {BUILTIN_IMPORT_CATALOG.map(meta => (
-                  <div key={meta.id} className="inject-hub-card">
-                    <div className="inject-hub-card-main">
-                      <div className="inject-hub-title-row">
-                        <span className="inject-hub-title">{meta.name}</span>
-                        <span className="inject-badge" style={{ background: "var(--inject-brand-bg)", color: "var(--inject-brand)" }}>
-                          {meta.tag}
-                        </span>
-                        <span className="inject-badge" style={{ background: "var(--inject-success-bg)", color: "var(--inject-success)", fontSize: 10 }}>
-                          {meta.license}
-                        </span>
-                      </div>
-                      <div className="inject-hub-desc">{meta.description}</div>
-                      <div className="inject-hub-meta">
-                        来源: <a href={meta.repo} target="_blank" rel="noreferrer">{meta.author}</a> · 正文 {meta.chars.toLocaleString()} 字符
-                      </div>
-                    </div>
-                    <div className="row" style={{ flexShrink: 0 }}>
-                      <button type="button" className="primary sm" onClick={() => handleBuiltinImport(meta)}>
-                        导入
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <p className="hint-text" style={{ margin: 0 }}>
-              从 Keysmith 官方源获取最新指令集与替换规则（MIT 协议）。
+              导入后即为普通预设，可自由编辑或删除。
             </p>
 
             <div className="inject-hub-list">
-              {REMOTE_PRESET_CATALOG.map(meta => (
-                <div key={meta.id} className="inject-hub-card">
-                  <div className="inject-hub-card-main">
-                    <div className="inject-hub-title-row">
-                      <span className="inject-hub-title">{meta.name}</span>
-                      <span className="inject-badge" style={{ background: "var(--inject-brand-bg)", color: "var(--inject-brand)" }}>
-                        {meta.tag}
-                      </span>
-                      <span className="inject-badge" style={{ background: "var(--inject-success-bg)", color: "var(--inject-success)", fontSize: 10 }}>
-                        {meta.license}
-                      </span>
-                    </div>
-                    <div className="inject-hub-desc">{meta.description}</div>
-                    <div className="inject-hub-meta">
-                      来源: <a href={meta.repo} target="_blank" rel="noreferrer">{meta.author}</a> · 规则: {meta.rules.length} 条
-                    </div>
-                  </div>
-                  <div className="row" style={{ flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      className="primary sm"
-                      disabled={fetchingId === meta.id}
-                      onClick={() => handleLiveFetch(meta)}
-                    >
-                      {fetchingId === meta.id ? "导入中…" : "导入"}
-                    </button>
-                  </div>
-                </div>
+              {HUB_ENTRIES.map(({ meta, inline }) => (
+                <HubCard
+                  key={meta.id}
+                  meta={meta}
+                  inline={inline}
+                  busy={fetchingId === meta.id}
+                  onImport={inline ? handleBuiltinImport : handleLiveFetch}
+                />
               ))}
             </div>
 

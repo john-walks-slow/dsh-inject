@@ -8,7 +8,7 @@ const CSS = `
   --inject-bg-card: var(--dsw-alias-bg-layer-1, #f9fafb);
   --inject-bg-subcard: var(--dsw-alias-bg-layer-2, #f3f4f6);
   --inject-bg-input: var(--dsw-alias-bg-layer-1, #ffffff);
-  --inject-bg-modal: var(--dsw-specific-menu, var(--dsw-alias-bg-layer-1, #ffffff));
+  --inject-bg-modal: var(--dsw-alias-bg-base, #ffffff);
   --inject-border: var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.12));
   --inject-border-subtle: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.06));
   --inject-border-focus: #2563eb;
@@ -413,7 +413,7 @@ body[data-ds-dark-theme] .dsh-inject,
 
 /* 模态框通用 */
 .dsh-inject-mask {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(6px);
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
   display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 16px;
 }
 .dsh-inject-modal {
