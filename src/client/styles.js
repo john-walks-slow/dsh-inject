@@ -175,19 +175,6 @@ body[data-ds-dark-theme] .dsh-inject,
   background: var(--inject-brand-bg); color: var(--inject-brand);
 }
 
-/* 快捷代码药丸 */
-.dsh-inject .inject-code-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 11px; padding: 2px 8px; border-radius: 4px;
-  background: var(--inject-bg-input); border: 1px solid var(--inject-border);
-  color: var(--inject-text-primary); cursor: pointer; transition: all 0.15s ease;
-  user-select: all;
-}
-.dsh-inject .inject-code-pill:hover {
-  border-color: var(--inject-border-focus); background: var(--inject-btn-hover);
-}
-
 /* 预设卡片 */
 .dsh-inject .inject-preset-card {
   border: 1px solid var(--inject-border); border-radius: 12px;
@@ -214,9 +201,6 @@ body[data-ds-dark-theme] .dsh-inject,
 .dsh-inject .preset-head-row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap;
-}
-.dsh-inject .preset-head-command {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .dsh-inject .preset-body {
   padding: 16px; border-top: 1px solid var(--inject-border-subtle);

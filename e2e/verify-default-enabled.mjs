@@ -12,6 +12,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "/usr/lib/node_modules/@playwright/cli/node_modules/playwright-core/index.mjs";
+import { openSettings } from "./lib/settings.mjs";
 
 const port = process.env.DSH_E2E_PORT;
 const token = process.env.DSH_E2E_TOKEN || "e2etest";
@@ -55,7 +56,7 @@ await dismiss(/^Continue$/, 25000);
 await dismiss(/Configure later/, 15000);
 
 // 设置页：勾上第一个预设的「默认启用」
-await page.getByRole("button", { name: "Settings" }).click({ force: true });
+await openSettings(page);
 await dismiss(/Configure later/, 12000);
 await page.getByRole("button", { name: "Inject" }).click({ timeout: 20000 });
 await page.waitForSelector("text=dsh-inject", { timeout: 20000 });

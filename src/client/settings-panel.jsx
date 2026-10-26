@@ -166,22 +166,6 @@ function withUniqueIds(existing, incoming) {
   });
 }
 
-function CommandPill({ command }) {
-  const [copied, setCopied] = useState(false);
-  const copy = e => {
-    e.stopPropagation();
-    navigator.clipboard?.writeText(command).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    }).catch(() => undefined);
-  };
-  return (
-    <span className="inject-code-pill" onClick={copy} title="点击复制启用命令">
-      <span>{copied ? "✓ 已复制" : command}</span>
-    </span>
-  );
-}
-
 function RuleEditor({ rule, onChange, onRemove, onClone, onMoveUp, onMoveDown, isFirst, isLast }) {
   const patch = values => onChange({ ...rule, ...values });
   const toggleRole = role => {
@@ -417,10 +401,6 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
             </div>
           </div>
 
-          <div className="preset-head-command">
-            <span className="inject-field-label">启用命令</span>
-            <CommandPill command={`/inject on ${preset.id}`} />
-          </div>
         </div>
       </div>
 
@@ -463,6 +443,9 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
               {preset.models?.length ? ` · 限定模型 (${preset.models.length})` : ""}
             </summary>
             <div className="inject-advanced-body">
+              <p className="hint-text" style={{ margin: "0 0 12px" }}>
+                以下决定预设何时自动生效；不勾「总是启用」时，预设只在会话里手动开启。
+              </p>
               <div className="row" style={{ gap: 10, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <label
                   className={`inject-default-toggle ${preset.defaultEnabled ? "on" : ""}`}
@@ -475,6 +458,9 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
                   />
                   总是启用
                 </label>
+                <span className="hint-text" style={{ margin: 0 }}>
+                  勾选后无需切换模式，匹配的会话默认启用本预设。
+                </span>
               </div>
 
               <div className="row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -501,7 +487,7 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
                   />
                 </label>
                 <span className="hint-text" style={{ margin: 0, flexBasis: "100%" }}>
-                  留空=全部；仅在「总是启用」时作为过滤条件。
+                  两个作用域都留空 = 对所有会话生效；填了则只在命中时自动启用（仅「总是启用」时作为过滤条件，例如限定某个模型才自动加载）。
                 </span>
               </div>
             </div>

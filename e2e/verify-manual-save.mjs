@@ -7,6 +7,7 @@
  *  5. 关闭页面重新进 → 配置是新保存的值
  */
 import { chromium } from "/usr/lib/node_modules/@playwright/cli/node_modules/playwright-core/index.mjs";
+import { openSettings } from "./lib/settings.mjs";
 
 const port = process.env.DSH_E2E_PORT || "37971";
 const token = process.env.DSH_E2E_TOKEN || "e2etest";
@@ -36,7 +37,7 @@ async function snapshot(label) {
   return { statusText, saveVisible, discardVisible, dirty: dirty > 0 };
 }
 
-await page.getByRole("button", { name: "Settings" }).click({ force: true });
+await openSettings(page);
 await dismiss(/Configure later/, 12000);
 await page.getByRole("button", { name: "Inject" }).click({ timeout: 20000 });
 await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
@@ -83,7 +84,7 @@ await page.waitForTimeout(800);
 await page.screenshot({ path: "shots/verify-manual-save-after-close.png", fullPage: true });
 
 // 重新打开 settings -> inject，确认配置保留
-await page.getByRole("button", { name: "Settings" }).click({ force: true });
+await openSettings(page);
 await page.waitForTimeout(800);
 await page.getByRole("button", { name: "Inject" }).click({ timeout: 20000 });
 await page.waitForSelector("text=dsh-inject", { timeout: 20000 });

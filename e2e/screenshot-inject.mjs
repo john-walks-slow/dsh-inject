@@ -4,6 +4,7 @@
  */
 import { mkdir } from "node:fs/promises";
 import { chromium } from "/usr/lib/node_modules/@playwright/cli/node_modules/playwright-core/index.mjs";
+import { openSettings } from "./lib/settings.mjs";
 
 const port = process.env.DSH_E2E_PORT;
 const token = process.env.DSH_E2E_TOKEN || "e2etest";
@@ -23,7 +24,7 @@ await dismiss(/Configure later/, 15000);
 await mkdir("shots", { recursive: true });
 
 // 设置页：先清掉内置默认预设，再建两个画面更紧凑的演示预设
-await page.getByRole("button", { name: "Settings" }).click({ force: true });
+await openSettings(page);
 await dismiss(/Configure later/, 12000);
 await page.getByRole("button", { name: "Inject" }).click({ timeout: 20000 });
 await page.waitForSelector("text=dsh-inject", { timeout: 20000 });
