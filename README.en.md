@@ -5,7 +5,12 @@
   <a href="./README.en.md"><strong>English</strong></a>
 </p>
 
-`dsh-inject` is a plugin for DeepSeek Harness (DSH) to manage model context: perform keyword and regex replacement on selected message roles prior to model requests, manage multiple session-level context presets, and insert synthetic turns on the fly. Each injection leaves a collapsible record line in the conversation detailing the injection payload.
+`dsh-inject` is a transparent, flexible jailbreak plugin for DeepSeek Harness: every change happens only on **the request copy sent to the model**. Nothing is written into the conversation log, no host file is touched, and switching it off is indistinguishable from never having enabled it.
+
+- **Three ways to inject**: system-prompt sections, synthetic turns (system / user / assistant / tool), and keyword or regex replacement.
+- **Four ways to drive it**: attach a preset to a mode (active the moment a session switches to it), toggle per session with `/inject on|off`, mark it always-on, or scope it by model / agent preset - so different models can run different presets.
+
+Every injection leaves a collapsible record line in the conversation describing exactly what was injected.
 
 ![Settings Panel](shots/inject-settings.png)
 
@@ -26,7 +31,7 @@ No configuration needed: the package ships its own `dsh.bundle.patch`; restart d
 - **Session-level Override**: `/inject <preset-id>` or `/inject off` only applies to the current session and takes precedence over global defaults.
 - **Agent-preset Scoped Defaults**: After marking "Enable by default", an expanded preset can list agent preset ids (comma separated, empty = all). A non-empty list makes the default apply only when the live session's agent preset matches. The live preset comes from DSH's `agentPreset` projection, so a runtime preset switch takes effect on the next request.
 - **Model-scoped Defaults**: The same expanded area accepts model ids or `provider/model` entries (comma separated, empty = all). A non-empty list makes the default apply only when the current request model matches. Explicit `/inject on` is not model-gated.
-- **Two Injection Channels**: System sections enter the host's system prompt (subject to complete-prompt modes); synthetic turns enter the request message list. Both may be active at once. Final order: host system sections (including this plugin's section) → `system` synthetic turns (appended to the system message) → other synthetic turns (inserted before the original conversation) → original messages.
+- **Two Injection Channels**: System sections enter the host's system prompt (subject to complete-prompt modes); synthetic turns enter the request message list. Both may be active at once. Final order: the host system message → synthetic turns (**in the order you arranged**) → the original conversation. A `system` turn placed first is hoisted together with the system prompt by the provider, while one placed after dialogue turns becomes an in-history system update - positions are never rearranged.
 - **Zero Side Effects**: Enabled states are in-process memory states and are not written into session logs; turning off a preset leaves no residual state.
 - Session-specific states reset upon process restart (falling back to globally default-enabled presets).
 
