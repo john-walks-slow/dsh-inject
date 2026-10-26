@@ -12,10 +12,10 @@
 ## Installation
 
 ```bash
-npm install dsh-inject
+dsh plugin --profile web add dsh-inject
 ```
 
-Add `dsh-inject` to `dsh.profile.bundles` in your profile configuration.
+No configuration needed: the package ships its own `dsh.bundle.patch`; restart dsh to load it.
 
 ## Core Semantics
 

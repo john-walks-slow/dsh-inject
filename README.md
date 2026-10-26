@@ -12,10 +12,10 @@
 ## 安装
 
 ```bash
-npm install dsh-inject
+dsh plugin --profile web add dsh-inject
 ```
 
-把 `dsh-inject` 加入 profile 的 `dsh.profile.bundles`。
+安装后无需改配置：包内自带 `dsh.bundle.patch`，重启 dsh 即生效。
 
 ## 核心语义
 
