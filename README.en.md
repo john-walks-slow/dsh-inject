@@ -82,7 +82,7 @@ With no user configuration, `dsh-inject` ships three inject presets:
 
 A third preset, **`authority`**, rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
 
-Every inject preset can toggle the "Create as Mode" switch. When enabled, the plugin registers an agent preset mode named `inject-{id}` (minimal composition: persona `complete` + basic tools + compaction); switching to this mode in a session automatically enables the matching inject preset. Legacy "always enabled" and agent preset / model filters are preserved under Advanced Options. Profiles without the `agentPresets` service (for example headless) do not register modes; inject presets remain available via `/inject`.
+Every inject preset can toggle the "Create as Mode" switch. When enabled, the plugin registers an agent preset mode named `inject-{id}` whose composition is taken verbatim from the host's `standard` preset — the same tool set and workspace-instruction (AGENTS.md) reading as Standard mode; switching to this mode in a session automatically enables the matching inject preset. Legacy "always enabled" and agent preset / model filters are preserved under Advanced Options. Profiles without the `agentPresets` service, or without a declared `standard` preset (for example headless), do not register modes; inject presets remain available via `/inject`.
 
 ## Keysmith Compatibility
 
@@ -111,7 +111,8 @@ Settings → Import / Export → Built-in presets → "dsh-purge 破甲稿" → 
 - Synthetic `tool` roles are transformed into user context annotated with tool-result markers to avoid orphaned tool calls;
 - Injection audit rows appear in the message history and become visible after the first turn in a brand new session;
 - System sections require the host's `systemPrompt` service; when it is unavailable the section is skipped, while rules and synthetic turns still work;
-- System sections follow the host's prompt assembly rules. If the current agent preset uses a complete system prompt (for example `minimal`, or this plugin's built-in `unrestricted` / `nsfw`), the host keeps only the complete section and the system section is dropped; use head synthetic turns for those modes.
+- System sections follow the host's prompt assembly rules. If the current agent preset uses a complete system prompt (for example `minimal`), the host keeps only the complete section and the system section is dropped; use head synthetic turns for those modes.
+- "Create as Mode" takes its composition from the host-declared `standard` preset; a profile without one registers no modes (the process log says so).
 
 ## License
 

@@ -6,7 +6,7 @@ import { createSessionState, MAX_PENDING_TURNS } from "./session-state.js";
 import { templateToMessages, transformMessages } from "./transform.js";
 
 export const name = "dsh-inject";
-export const inject = ["agents", "llm", "commands", "settings", "sessionProjections"];
+export const inject = ["agents", "llm", "commands", "settings", "sessionProjections", "loader"];
 export const Config = z.object({
   presets: z.array(z.any()).default([]).volatile(),
   templates: z.array(z.any()).default([]).volatile()
@@ -292,7 +292,7 @@ export function apply(ctx, rawConfig = {}) {
   });
   // 动态注册开启了「创建为模式」的 agent preset (inject-{id})。没有 agentPresets 服务的 profile 自动跳过。
   ctx.inject(["agentPresets"], child => {
-    const manager = createAgentPresetManager(child.agentPresets, child.logger);
+    const manager = createAgentPresetManager(child.agentPresets, child.logger, child.loader);
     child.effect(() => {
       void manager.sync(readConfig(rawConfig).presets);
       const onUpdate = () => {

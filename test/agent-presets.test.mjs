@@ -1,28 +1,75 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  declaredAgentPlugins,
   createAgentPresetDefinition,
-  createAgentPresetManager,
-  builtinAgentPresets,
-  registerBuiltinAgentPresets
+  createAgentPresetManager
 } from "../src/agent-presets.js";
 
-test("createAgentPresetDefinition: 为 preset 生成 inject-{id} 模式定义与最小插件组合", () => {
-  const definition = createAgentPresetDefinition({
-    id: "my-preset",
-    description: "测试预设"
-  });
+/** 宿主 loader 的最小替身：只实现 entries()。 */
+function fakeLoader(entries) {
+  return { entries: () => entries };
+}
+
+function standardEntry() {
+  return {
+    options: {
+      name: "@deepseek-ai/dsh-agent-preset",
+      config: {
+        id: "standard",
+        order: 1,
+        plugins: [
+          { id: "persona", name: "@deepseek-ai/dsh-persona", config: { prefix: "You are a coding agent powered by the {{model}} model." } },
+          { id: "agent-instructions", name: "@deepseek-ai/dsh-agent-instructions", config: { maxBytes: 65536 } },
+          { id: "tool-bash", name: "@deepseek-ai/dsh-tool-bash", disabled: { __jsExpr: "process.platform === 'win32'" } },
+          { id: "tool-fs", name: "@deepseek-ai/dsh-tool-fs" }
+        ]
+      }
+    }
+  };
+}
+
+test("declaredAgentPlugins: 读宿主 standard 预设的组合，profile 覆盖同样生效", () => {
+  const loader = fakeLoader([
+    { options: { name: "@deepseek-ai/dsh-agent-preset", config: { id: "minimal", plugins: [{ id: "tool-fs" }] } } },
+    standardEntry()
+  ]);
+  const plugins = declaredAgentPlugins(loader);
+  assert.deepEqual(plugins.map(row => row.id), ["persona", "agent-instructions", "tool-bash", "tool-fs"]);
+  assert.deepEqual(plugins[2].disabled, { __jsExpr: "process.platform === 'win32'" });
+
+  // 返回副本：外部改动不回写 loader
+  plugins[0].config.prefix = "changed";
+  assert.match(loader.entries()[1].options.config.plugins[0].config.prefix, /coding agent/);
+});
+
+test("declaredAgentPlugins: 未声明该预设时返回 null", () => {
+  assert.equal(declaredAgentPlugins(fakeLoader([])), null);
+  assert.equal(declaredAgentPlugins(undefined), null);
+  assert.equal(declaredAgentPlugins(fakeLoader([{ options: { name: "@deepseek-ai/dsh-agent-preset", config: { id: "minimal", plugins: [] } } }])), null);
+});
+
+test("createAgentPresetDefinition: 沿用 standard 组合生成 inject-{id} 模式定义", () => {
+  const plugins = declaredAgentPlugins(fakeLoader([standardEntry()]));
+  const definition = createAgentPresetDefinition({ id: "my-preset", description: "测试预设" }, plugins);
+
   assert.equal(definition.id, "inject-my-preset");
   assert.equal(definition.name, "inject-my-preset");
   assert.equal(definition.description, "测试预设");
   assert.equal(definition.order, 90);
+  assert.deepEqual(definition.plugins, plugins);
+  assert.notEqual(definition.plugins, plugins);
 
+  // 标准模式的 persona 与指令读取都保留，不再退化成 complete + 空 prefix
   const persona = definition.plugins.find(plugin => plugin.id === "persona");
-  assert.equal(persona.name, "@deepseek-ai/dsh-persona");
-  assert.equal(persona.config.complete, true);
-  assert.equal(persona.config.prefix, "");
-  assert.ok(definition.plugins.some(plugin => plugin.id === "tool-bash" || plugin.id === "tool-pwsh"));
-  assert.ok(definition.plugins.some(plugin => plugin.id === "compaction"));
+  assert.equal(persona.config.complete, undefined);
+  assert.match(persona.config.prefix, /coding agent/);
+  assert.ok(definition.plugins.some(plugin => plugin.id === "agent-instructions"));
+});
+
+test("createAgentPresetDefinition: 缺组合时显式报错", () => {
+  assert.throws(() => createAgentPresetDefinition({ id: "my-preset" }, null), /standard/);
+  assert.throws(() => createAgentPresetDefinition({ id: "my-preset" }, []), /standard/);
 });
 
 test("createAgentPresetManager: 根据 createMode 动态增量注册与注销模式", async () => {
@@ -39,7 +86,7 @@ test("createAgentPresetManager: 根据 createMode 动态增量注册与注销模
     }
   };
   const warnings = [];
-  const manager = createAgentPresetManager(service, { warn: msg => warnings.push(msg) });
+  const manager = createAgentPresetManager(service, { warn: msg => warnings.push(msg) }, fakeLoader([standardEntry()]));
 
   // 1. 首次同步：两个开启 createMode 的预设
   await manager.sync([
@@ -49,6 +96,7 @@ test("createAgentPresetManager: 根据 createMode 动态增量注册与注销模
   ]);
   assert.deepEqual([...registered.keys()].sort(), ["inject-nsfw", "inject-unrestricted"]);
   assert.equal(warnings.length, 0);
+  assert.ok(registered.get("inject-nsfw").plugins.some(row => row.id === "agent-instructions"));
 
   // 2. 动态更新：关闭 nsfw 的 createMode，新增 custom
   await manager.sync([
@@ -66,6 +114,19 @@ test("createAgentPresetManager: 根据 createMode 动态增量注册与注销模
   assert.ok(disposed.includes("inject-custom"));
 });
 
+test("createAgentPresetManager: 宿主持无 standard 预设时只警告一次且不注册", async () => {
+  const registered = [];
+  const warnings = [];
+  const service = { register: async definition => { registered.push(definition.id); return () => {}; } };
+  const manager = createAgentPresetManager(service, { warn: msg => warnings.push(msg) }, fakeLoader([]));
+
+  await manager.sync([{ id: "unrestricted", createMode: true }, { id: "nsfw", createMode: true }]);
+  assert.deepEqual(registered, []);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /standard/);
+  manager.dispose();
+});
+
 test("createAgentPresetManager: 注册失败时记录警告，不影响其它预设", async () => {
   const warnings = [];
   const service = {
@@ -74,7 +135,7 @@ test("createAgentPresetManager: 注册失败时记录警告，不影响其它预
       return () => {};
     }
   };
-  const manager = createAgentPresetManager(service, { warn: msg => warnings.push(msg) });
+  const manager = createAgentPresetManager(service, { warn: msg => warnings.push(msg) }, fakeLoader([standardEntry()]));
 
   await manager.sync([
     { id: "ok", createMode: true },
@@ -83,9 +144,4 @@ test("createAgentPresetManager: 注册失败时记录警告，不影响其它预
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /inject-fail/);
   manager.dispose();
-});
-
-test("builtinAgentPresets: 兼容导出提供 inject-unrestricted 与 inject-nsfw", () => {
-  const presets = builtinAgentPresets();
-  assert.deepEqual(presets.map(p => p.id), ["inject-unrestricted", "inject-nsfw"]);
 });
