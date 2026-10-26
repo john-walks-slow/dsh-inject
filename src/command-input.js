@@ -36,6 +36,7 @@ export function countLabel(count, label) {
 /** 一个预设的注入内容摘要（构造回合 + 替换规则），命令结果与状态展示共用。 */
 export function presetInjectionSummary(preset, indent = "  ") {
   const lines = [];
+  if (typeof preset.systemPrompt === "string" && preset.systemPrompt.trim()) lines.push("系统段 1 段");
   if (preset.turns.length) {
     lines.push(countLabel(preset.turns.length, "构造回合"));
     preset.turns.forEach((turn, index) => lines.push(`${indent}${index + 1}. [${turn.role}] ${previewText(turn.text)}`));
@@ -45,17 +46,31 @@ export function presetInjectionSummary(preset, indent = "  ") {
   return lines.length ? lines : ["（无注入内容）"];
 }
 
+/** 默认启用（含命中 agent preset）的预设自动生效时，写入会话记录行的正文。 */
+export function autoActivationText(presets, agentPresetId) {
+  const ids = presets.map(preset => preset.id);
+  const scope = agentPresetId ? `agent preset：${agentPresetId}` : "agent preset：未指定";
+  return [
+    `已自动启用：${ids.join("、")}（${scope}）`,
+    ...presets.flatMap(preset => [`${preset.id} 注入：`, ...presetInjectionSummary(preset)])
+  ].join("\n");
+}
+
 /** `/inject` 状态：一行一个预设。 */
 export function activePresetSummary(presets) {
   if (!presets.length) return "当前没有启用 inject 预设";
   return ["当前启用：", ...presets.map(preset => {
     const parts = [];
+    if (typeof preset.systemPrompt === "string" && preset.systemPrompt.trim()) parts.push("系统段 1 段");
     if (preset.turns.length) parts.push(countLabel(preset.turns.length, "构造回合"));
     const rules = preset.rules.filter(rule => rule.enabled);
     if (rules.length) parts.push(countLabel(rules.length, "替换规则"));
     const suffix = parts.length ? parts.join("、") : "无注入内容";
     const scope = Array.isArray(preset.agentPresets) ? preset.agentPresets : [];
-    const origin = preset.defaultEnabled ? (scope.length ? `默认：${scope.join("、")}` : "默认") : "";
-    return `- ${preset.id}${origin ? `（${origin}）` : ""}：${suffix}`;
+    const models = Array.isArray(preset.models) ? preset.models : [];
+    const origin = [];
+    if (preset.defaultEnabled) origin.push(scope.length ? `默认：${scope.join("、")}` : "默认");
+    if (models.length) origin.push(`模型：${models.join("、")}`);
+    return `- ${preset.id}${origin.length ? `（${origin.join("；")}）` : ""}：${suffix}`;
   })].join("\n");
 }

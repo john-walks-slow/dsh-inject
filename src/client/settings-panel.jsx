@@ -3,6 +3,7 @@ import {
   readConfig,
   writeConfig,
   emptyPreset,
+  mergeBuiltinPresets,
   nextPresetId,
   emptyRule,
   emptyTemplate,
@@ -22,7 +23,8 @@ import { defaultPresets, ruleError, safeId } from "../schema.js";
 const ROLES = [
   { id: "user", label: "用户" },
   { id: "assistant", label: "助手" },
-  { id: "tool", label: "工具" }
+  { id: "tool", label: "工具" },
+  { id: "instructions", label: "工作区指令" }
 ];
 
 const TURN_ROLES = [
@@ -332,11 +334,16 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [searchQuery, setSearchQuery] = useState("");
   const [agentScope, setAgentScope] = useState(() => (preset.agentPresets ?? []).join(", "));
+  const [modelScope, setModelScope] = useState(() => (preset.models ?? []).join(", "));
   const patch = values => onChange({ ...preset, ...values });
 
   useEffect(() => {
     setAgentScope((preset.agentPresets ?? []).join(", "));
   }, [preset.agentPresets]);
+
+  useEffect(() => {
+    setModelScope((preset.models ?? []).join(", "));
+  }, [preset.models]);
 
   const rules = preset.rules ?? [];
   const activeCount = rules.filter(r => r.enabled !== false).length;
@@ -374,6 +381,7 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
                 <span>{preset.id || "未命名预设"}</span>
                 <span className="inject-badge" style={{ fontWeight: 500 }}>
                   {rules.length} 条替换规则 ({activeCount} 启用) · {turns.length} 个构造回合
+                  {preset.systemPrompt?.trim() ? " · 1 系统段" : ""}
                 </span>
               </div>
             </div>
@@ -446,10 +454,35 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
                 placeholder="逗号分隔，留空=全部"
               />
             </label>
+            <label className="inject-field shrink-0">
+              <span className="inject-field-label">限定模型</span>
+              <input
+                type="text"
+                style={{ width: 230 }}
+                value={modelScope}
+                onChange={e => setModelScope(e.target.value)}
+                onBlur={() => patch({ models: modelScope.split(/[\s,，]+/).filter(Boolean) })}
+                placeholder="模型 id 或 provider/model，逗号分隔"
+              />
+            </label>
             <span className="hint-text" style={{ margin: 0 }}>
-              勾选「默认启用」后，只在当前会话的 agent preset 命中这些 id 时生效；留空表示所有会话。
+              两个作用域都为空时对所有会话生效；勾选「默认启用」后，只有 agent preset 与模型都命中时才自动启用。
             </span>
           </div>
+
+          <div className="inject-section-title" style={{ marginTop: 22 }}>
+            <span>系统提示词段（写入宿主 system prompt，与构造回合并存）</span>
+          </div>
+          <textarea
+            className="inject-turn-textarea"
+            value={preset.systemPrompt ?? ""}
+            onChange={e => patch({ systemPrompt: e.target.value })}
+            placeholder="可选：作为 system prompt 的一段注入。留空不注入。"
+          />
+          <p className="hint-text" style={{ margin: "6px 0 0" }}>
+            系统段遵守宿主的提示词组装规则；complete 系统提示模式下会被宿主丢弃。
+            需要「追加到系统消息末尾」的语义时，用下方 system 回合。
+          </p>
 
           <div className="inject-section-title">
             <span>自动替换规则（仅改写发给模型的请求，保护原始聊天）</span>
@@ -504,7 +537,7 @@ function PresetCard({ preset, takenIds, onChange, onRemove, onClone, onExport, o
           })}
 
           <div className="inject-section-title" style={{ marginTop: 22 }}>
-            <span>开头构造回合（放进模型请求的最前方，可插入系统规约或 Few-shot）</span>
+            <span>构造回合（消息级注入：system 追加到系统消息末尾，其它角色插在原会话消息之前）</span>
           </div>
           <TurnsEditor turns={turns} onChange={nextTurns => patch({ turns: nextTurns })} />
         </div>
@@ -1058,13 +1091,23 @@ export function SettingsPanel({ scope }) {
             <span className="hint-text">
               在会话中输入 <code>/inject on 预设 id</code> 启用（多个用逗号分隔）、<code>/inject off</code> 关闭；标记「默认启用」的预设对所有会话生效。
             </span>
-            <button
-              type="button"
-              className="primary sm"
-              onClick={() => setDraft(current => ({ ...current, presets: [...current.presets, emptyPreset(nextPresetId(current.presets))] }))}
-            >
-              ＋ 新建预设
-            </button>
+            <div className="row" style={{ gap: 6 }}>
+              <button
+                type="button"
+                className="ghost sm"
+                title="把尚未加入的内置预设补回列表；已存在的 id 不会被覆盖"
+                onClick={() => setDraft(current => ({ ...current, presets: mergeBuiltinPresets(current.presets) }))}
+              >
+                补回内置预设
+              </button>
+              <button
+                type="button"
+                className="primary sm"
+                onClick={() => setDraft(current => ({ ...current, presets: [...current.presets, emptyPreset(nextPresetId(current.presets))] }))}
+              >
+                ＋ 新建预设
+              </button>
+            </div>
           </div>
 
           {presets.length === 0 && (

@@ -34,8 +34,16 @@ export function emptyTurn(role = "user") {
   return { role, text: "" };
 }
 
+/** 补回当前配置里缺失的内置预设；已存在的 id 一律不覆盖。 */
+export function mergeBuiltinPresets(presets) {
+  const list = presets ?? [];
+  const existing = new Set(list.map(preset => preset.id));
+  const missing = defaultPresets().filter(preset => !existing.has(preset.id)).map(normalizePreset);
+  return missing.length ? [...list, ...missing] : list;
+}
+
 export function emptyPreset(id = "preset") {
-  return { id, description: "", defaultEnabled: false, agentPresets: [], rules: [], turns: [] };
+  return { id, description: "", defaultEnabled: false, agentPresets: [], models: [], systemPrompt: "", rules: [], turns: [] };
 }
 
 /** 新建预设时给一个可读、可改的序号 id，而不是随机串。 */
@@ -64,6 +72,8 @@ export function clonePreset(preset) {
     ...preset,
     id: `${preset.id}-copy`,
     agentPresets: [...(preset.agentPresets ?? [])],
+    models: [...(preset.models ?? [])],
+    systemPrompt: preset.systemPrompt ?? "",
     rules: (preset.rules || []).map(r => ({ ...r, id: newId("rule") })),
     turns: (preset.turns || []).map(t => ({ ...t }))
   };
@@ -108,6 +118,7 @@ export function simulateReplacement(text, rules, role = "user") {
     return { output: text, hits: [], skippedSlash: true };
   }
   const activeRules = (rules || []).filter(r => r.enabled !== false && r.pattern && (r.targets || []).includes(role));
+  const protectTags = role !== "instructions";
   let currentText = text || "";
   const hits = [];
 
@@ -123,7 +134,8 @@ export function simulateReplacement(text, rules, role = "user") {
       }
       if (matchCount > 0) {
         hits.push({ rule, count: matchCount });
-        if (!PROTECTED_TAG_RE.test(currentText)) {
+        PROTECTED_TAG_RE.lastIndex = 0;
+        if (!protectTags || !PROTECTED_TAG_RE.test(currentText)) {
           currentText = applyRuleText(compiled, rule.replacement, currentText);
         } else {
           currentText = currentText.split(PROTECTED_TAG_RE).map(part => {

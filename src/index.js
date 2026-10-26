@@ -30,6 +30,40 @@ function sessionKey(agentOrId) {
   return String(typeof agentOrId === "object" ? agentOrId.session.id : agentOrId);
 }
 
+/** 当前请求的 provider/model；缺失时对应项为 null。模型作用域同时认 model 与 provider/model。 */
+function routeOf(value) {
+  const model = typeof value?.model === "string" ? value.model.trim() : "";
+  const provider = typeof value?.provider === "string" ? value.provider.trim() : "";
+  return { model: model || null, provider: provider || null };
+}
+
+/**
+ * agent 当前将要使用的 provider/model。
+ *
+ * `agent.options` 只是创建时的快照；运行中切换模型走 `modelSelection` 投影与
+ * 请求头，所以按「待生效选择 → 上一次请求头 → 创建快照」的顺序取。
+ */
+function routeForAgent(ctx, agent) {
+  try {
+    const pending = ctx.sessionProjections?.stateOf?.(agent?.session, "modelSelection")?.pending;
+    const picked = routeOf(pending);
+    if (picked.model) return picked;
+  } catch {
+    // 投影未注册时退回请求头。
+  }
+  try {
+    const logged = routeOf(agent?.session?.requestHeader?.()?.config);
+    if (logged.model) return logged;
+  } catch {
+    // 无请求头时退回创建快照。
+  }
+  return routeOf(agent?.options);
+}
+
+function currentRouteOf(ctx, id) {
+  return routeForAgent(ctx, ctx.agents.get(id));
+}
+
 /** 按预设 id 匹配；id 不含空白与逗号，命令层已完成切分。 */
 function matchPresets(config, ids) {
   const wanted = new Set(ids);
@@ -49,12 +83,34 @@ function agentPresetOf(ctx, session) {
   return typeof header === "string" && header.length > 0 ? header : null;
 }
 
-/** 该会话当前生效的预设：默认启用项叠加会话内显式开关。 */
-function activePresets(ctx, config, id) {
+/** 该会话当前 agent preset id（未知时为 null）。 */
+function currentAgentPresetId(ctx, id) {
   const agent = ctx.agents.get(id);
-  const agentPresetId = agent === undefined ? null : agentPresetOf(ctx, agent.session);
-  const active = new Set(sessions.activeIds(id, defaultPresetIds(config.presets, agentPresetId)));
+  return agent === undefined ? null : agentPresetOf(ctx, agent.session);
+}
+
+/** 该会话当前生效的预设：默认启用项叠加会话内显式开关。 */
+function activePresets(ctx, config, id, route = {}) {
+  const defaults = defaultPresetIds(config.presets, currentAgentPresetId(ctx, id), route.model, route.provider);
+  const active = new Set(sessions.activeIds(id, defaults));
   return config.presets.filter(preset => active.has(preset.id));
+}
+
+/** 把当前生效预设的系统段拼成一段；空段不占位。 */
+export function systemSectionText(presets) {
+  return (presets ?? [])
+    .map(preset => (typeof preset?.systemPrompt === "string" ? preset.systemPrompt.trim() : ""))
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function systemSectionForAgent(ctx, config, agent) {
+  if (!agent?.session?.id) return "";
+  try {
+    return systemSectionText(activePresets(ctx, config, sessionKey(agent), routeForAgent(ctx, agent)));
+  } catch {
+    return "";
+  }
 }
 
 function registerCommands(ctx, rawConfig) {
@@ -69,7 +125,7 @@ function registerCommands(ctx, rawConfig) {
       const parsed = parseInjectInput(rawInput);
       if (parsed.action === "invalid") return { kind: "error", text: INJECT_USAGE };
       if (parsed.action === "status") {
-        return { kind: "success", text: activePresetSummary(activePresets(ctx, config, id)) };
+        return { kind: "success", text: activePresetSummary(activePresets(ctx, config, id, currentRouteOf(ctx, id))) };
       }
       if (parsed.action === "clear") {
         sessions.clear(id);
@@ -186,6 +242,16 @@ export function isLoopRequest(options) {
 }
 
 export function apply(ctx, rawConfig = {}) {
+  // 真正的 system prompt 段：比「伪造 system 消息」更贴近宿主组装顺序，且每轮按
+  // 当前 session / agent preset / model 重新计算，不落盘、不污染会话。
+  ctx.inject(["systemPrompt"], child => {
+    child.effect(() => child.systemPrompt.section({
+      name: "dsh-inject",
+      order: 5100,
+      interpolate: false,
+      text: context => systemSectionForAgent(ctx, readConfig(rawConfig), context?.agent)
+    }));
+  });
   ctx.inject(["settings"], child => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber));
   });
@@ -262,11 +328,12 @@ export function apply(ctx, rawConfig = {}) {
     if (!isLoopRequest(options) || transformedRequests.has(options)) return next();
     const id = sessionKey(options.sessionId);
     const config = readConfig(rawConfig);
-    const presets = activePresets(ctx, config, id);
+    const presets = activePresets(ctx, config, id, routeOf(options));
     const hasRule = presets.some(preset => preset.rules.some(rule => rule.enabled && rule.pattern));
+    const hasSection = presets.some(preset => typeof preset.systemPrompt === "string" && preset.systemPrompt.trim().length > 0);
     const pending = sessions.take(id);
     const prefix = [...presets.flatMap(preset => preset.turns), ...pending];
-    if (!prefix.length && !hasRule) return next();
+    if (!prefix.length && !hasRule && !hasSection) return next();
     const rewritten = transformMessages(options.messages, presets);
     const messages = insertPrefix(rewritten, templateToMessages(prefix));
     if (messages === options.messages) return next();

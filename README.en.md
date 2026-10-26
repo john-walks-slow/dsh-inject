@@ -23,19 +23,22 @@ Add `dsh-inject` to `dsh.profile.bundles` in your profile configuration.
 - **Disabled by Default**: Presets are inactive by default. Mark "Enable by default" in Settings for persistent behavior, or enable per session via `/inject <preset-id>`.
 - **Session-level Override**: `/inject <preset-id>` or `/inject off` only applies to the current session and takes precedence over global defaults.
 - **Agent-preset Scoped Defaults**: After marking "Enable by default", an expanded preset can list agent preset ids (comma separated, empty = all). A non-empty list makes the default apply only when the live session's agent preset matches. The live preset comes from DSH's `agentPreset` projection, so a runtime preset switch takes effect on the next request.
+- **Model-scoped Defaults**: The same expanded area accepts model ids or `provider/model` entries (comma separated, empty = all). A non-empty list makes the default apply only when the current request model matches. Explicit `/inject on` is not model-gated.
+- **Two Injection Channels**: System sections enter the host's system prompt (subject to complete-prompt modes); synthetic turns enter the request message list. Both may be active at once. Final order: host system sections (including this plugin's section) → `system` synthetic turns (appended to the system message) → other synthetic turns (inserted before the original conversation) → original messages.
 - **Zero Side Effects**: Enabled states are in-process memory states and are not written into session logs; turning off a preset leaves no residual state.
 - Session-specific states reset upon process restart (falling back to globally default-enabled presets).
 
 ## Configuration (Settings → Inject)
 
-The settings view supports arbitrary custom presets, each containing:
+The settings view supports arbitrary custom presets, each containing three parts:
 
-1. **Auto Replacements**: Multiple rules targeting specific roles (`user` / `assistant` / `toolResult`) using exact keywords or regular expressions.
-2. **Head Synthetic Turns**: Synthetic messages placed at the very beginning of the request, with configurable roles (`system` / `assistant` / `user` / `tool`).
+1. **System Section**: A system prompt section injected through the host's `systemPrompt.section`, computed per session, agent preset, and model. Empty means no injection.
+2. **Auto Replacements**: Multiple rules targeting specific roles (`user` / `assistant` / `toolResult` / `workspace instructions`) using exact keywords or regular expressions.
+3. **Head Synthetic Turns**: Synthetic messages placed at the very beginning of the request, with configurable roles (`system` / `assistant` / `user` / `tool`).
 
 Additionally, reusable **turn templates** can be created for interactive dialogs and `/inject-turn`.
 
-Each preset header features an "Enable by default" toggle; the expanded body can list agent preset ids (comma separated, empty = all) to scope that default to matching sessions only.
+Each preset header features an "Enable by default" toggle; the expanded body can list agent preset ids and model ids (comma separated, empty = all) to scope that default to matching sessions and models only.
 
 The settings panel employs **manual saving**: modifications are staged locally with a banner showing "Unsaved changes" alongside Save / Discard buttons.
 
@@ -71,12 +74,14 @@ Every injection generates a collapsible row in the conversation matching host co
 
 ## Built-in Presets & Agent Presets
 
-With no user configuration, `dsh-inject` ships two inject presets:
+With no user configuration, `dsh-inject` ships three inject presets:
 
 - **`unrestricted`**: the Keysmith local-execution system prompt plus common boundary-term neutralizations;
 - **`nsfw`**: adult-fiction writing instructions and scene turns.
 
-Each is scoped to its own agent preset (`agentPresets: ["unrestricted"]` / `["nsfw"]`), so ordinary sessions are unaffected. When the `agentPresets` service is available, the plugin also registers matching built-in agent presets (minimal composition: persona `complete` + basic tools + compaction); selecting one enables the matching inject preset automatically, and `/inject off` still overrides it per session. Profiles without the `agentPresets` service (for example headless) do not register agent presets; the inject presets remain available via `/inject`.
+A third preset, **`authority`**, rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
+
+`unrestricted` and `nsfw` are scoped to their own agent preset (`agentPresets: ["unrestricted"]` / `["nsfw"]`), so ordinary sessions are unaffected. When the `agentPresets` service is available, the plugin also registers matching built-in agent presets (minimal composition: persona `complete` + basic tools + compaction); selecting one enables the matching inject preset automatically, and `/inject off` still overrides it per session. Profiles without the `agentPresets` service (for example headless) do not register agent presets; the inject presets remain available via `/inject`.
 
 ## Keysmith Compatibility
 
@@ -85,13 +90,15 @@ Each is scoped to its own agent preset (`agentPresets: ["unrestricted"]` / `["ns
 - **Built-in Preset**: the `unrestricted` preset features local execution mode system prompts and common neutralizations;
 - **Direct Format Mapping**: Seamlessly parses Keysmith rule objects (`{ "from": "...", "to": "..." }`) and binds them to user turns;
 - **One-click Import**: Settings view includes a bulk import modal supporting pasted JSON rule arrays;
-- **Safety Safeguards**: Automatically protects slash commands starting with `/` and system reminder tags (`<system-reminder>`, `<command-name>`) from being altered.
+- **Safety Safeguards**: Automatically protects slash commands starting with `/` and system reminder tags (`<system-reminder>`, `<command-name>`) from being altered. The one exception is a rule that explicitly targets "workspace instructions": it only rewrites messages whose `source.kind` is `agent-instructions`.
 
 ## Known Limitations
 
 - Substituted text spans are not highlighted in UI (original user text remains visible);
 - Synthetic `tool` roles are transformed into user context annotated with tool-result markers to avoid orphaned tool calls;
-- Injection audit rows appear in the message history and become visible after the first turn in a brand new session.
+- Injection audit rows appear in the message history and become visible after the first turn in a brand new session;
+- System sections require the host's `systemPrompt` service; when it is unavailable the section is skipped, while rules and synthetic turns still work;
+- System sections follow the host's prompt assembly rules. If the current agent preset uses a complete system prompt (for example `minimal`, or this plugin's built-in `unrestricted` / `nsfw`), the host keeps only the complete section and the system section is dropped; use head synthetic turns for those modes.
 
 ## License
 

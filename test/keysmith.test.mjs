@@ -16,7 +16,7 @@ test("Keysmith: normalizeRule adapts { from, to } format directly", () => {
 
 test("Keysmith: normalizeConfig includes default Keysmith preset and template", () => {
   const emptyConfig = normalizeConfig({});
-  assert.equal(emptyConfig.presets.length, 2);
+  assert.equal(emptyConfig.presets.length, 3);
   const keysmith = emptyConfig.presets.find(preset => preset.id === KEYSMITH_PRESET.id);
   assert.ok(keysmith);
   assert.equal("name" in keysmith, false);

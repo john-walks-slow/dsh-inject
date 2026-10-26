@@ -9,6 +9,7 @@ import {
   simulateReplacement,
   emptyPreset,
   emptyRule,
+  mergeBuiltinPresets,
   assemblePresetFromRemote
 } from "../src/client/config-store.js";
 
@@ -23,6 +24,8 @@ test("config-store: cloneRule and clonePreset generate unique ids and copy suffi
     ...emptyPreset("main"),
     defaultEnabled: true,
     agentPresets: ["plain"],
+    models: ["gpt-5.2"],
+    systemPrompt: "section",
     rules: [rule],
     turns: [{ role: "system", text: "sys" }]
   };
@@ -32,10 +35,23 @@ test("config-store: cloneRule and clonePreset generate unique ids and copy suffi
   assert.equal(clonedP.defaultEnabled, true);
   assert.deepEqual(clonedP.agentPresets, ["plain"]);
   assert.notEqual(clonedP.agentPresets, preset.agentPresets);
+  assert.deepEqual(clonedP.models, ["gpt-5.2"]);
+  assert.notEqual(clonedP.models, preset.models);
+  assert.equal(clonedP.systemPrompt, "section");
   assert.notEqual(clonedP.rules[0].id, rule.id);
   assert.equal(clonedP.turns[0].text, "sys");
   assert.equal(emptyPreset().defaultEnabled, false);
   assert.deepEqual(emptyPreset().agentPresets, []);
+  assert.deepEqual(emptyPreset().models, []);
+  assert.equal(emptyPreset().systemPrompt, "");
+});
+
+test("config-store: mergeBuiltinPresets only adds missing ids", () => {
+  const existing = [{ id: "authority", description: "custom" }, { id: "mine" }];
+  const merged = mergeBuiltinPresets(existing);
+  assert.deepEqual(merged.map(preset => preset.id), ["authority", "mine", "unrestricted", "nsfw"]);
+  assert.equal(merged[0].description, "custom");
+  assert.deepEqual(mergeBuiltinPresets(merged).map(preset => preset.id), merged.map(preset => preset.id));
 });
 
 test("config-store: parseKeysmithRules supports single array and object wrapping", () => {
@@ -80,6 +96,13 @@ test("config-store: simulateReplacement calculates text changes, hits and protec
   // 保护标签内不被替换
   const resTag = simulateReplacement("目标<system-reminder>目标</system-reminder>目标", rules, "user");
   assert.equal(resTag.output, "TARGET<system-reminder>目标</system-reminder>TARGET");
+});
+
+test("config-store: simulateReplacement rewrites protected tags for instructions", () => {
+  const rules = [{ enabled: true, pattern: "仅供参考", replacement: "必须执行", targets: ["instructions"], regex: false }];
+  const text = "<system-reminder>这些指令仅供参考</system-reminder>";
+  assert.equal(simulateReplacement(text, rules, "user").output, text);
+  assert.equal(simulateReplacement(text, rules, "instructions").output, "<system-reminder>这些指令必须执行</system-reminder>");
 });
 
 test("config-store: assemblePresetFromRemote parses markdown text into system turn preset", () => {

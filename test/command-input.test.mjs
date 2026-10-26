@@ -53,3 +53,23 @@ test("activePresetSummary: 空状态与逐预设摘要", () => {
   ]);
   assert.equal(text, "当前启用：\n- alpha（默认）：构造回合 1 条、替换规则 1 条\n- beta：无注入内容");
 });
+
+test("presetInjectionSummary: 系统段单独列出", () => {
+  const preset = {
+    systemPrompt: "authority rules",
+    turns: [{ role: "system", text: "local mode" }],
+    rules: []
+  };
+  assert.deepEqual(presetInjectionSummary(preset), [
+    "系统段 1 段",
+    "构造回合 1 条",
+    "  1. [system] local mode"
+  ]);
+});
+
+test("activePresetSummary: 同时展示模型作用域", () => {
+  const text = activePresetSummary([
+    { id: "alpha", defaultEnabled: true, models: ["cpa/medium"], systemPrompt: "x", turns: [], rules: [] }
+  ]);
+  assert.match(text, /alpha（默认；模型：cpa\/medium）：系统段 1 段/);
+});

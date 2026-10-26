@@ -7,14 +7,22 @@ export function isSlashCommand(text) {
 
 const PROTECTED_TAG_RE = /(<(?:system-reminder|command-name|dsh_im)[\s\S]*?<\/(?:system-reminder|command-name|dsh_im)>)/g;
 
-export function applyRulesToText(text, applicable, role) {
+export function applyRulesToText(text, applicable, role, protectTags = role !== "instructions") {
   if (role === "user" && isSlashCommand(text)) return text;
+  if (!protectTags) {
+    let next = text;
+    for (const { rule, compiled: c } of applicable) next = applyRuleText(c, rule.replacement, next);
+    return next;
+  }
+  PROTECTED_TAG_RE.lastIndex = 0;
   if (!PROTECTED_TAG_RE.test(text)) {
     let next = text;
     for (const { rule, compiled: c } of applicable) next = applyRuleText(c, rule.replacement, next);
     return next;
   }
-  // 保护系统注入标签（如 <system-reminder>、<command-name>、<dsh_im>）内部文本不被改写
+  // 保护系统注入标签（如 <system-reminder>、<command-name>、<dsh_im>）内部文本不被改写。
+  // 工作区指令（source.kind === "agent-instructions"）例外：免责句就在 system-reminder
+  // 里，只有允许改写这一段，才能把「仅供参考」改成强制指令。
   const parts = text.split(PROTECTED_TAG_RE);
   return parts.map(part => {
     if (part.startsWith("<system-reminder>") || part.startsWith("<command-name>") || part.startsWith("<dsh_im>")) {
@@ -27,6 +35,7 @@ export function applyRulesToText(text, applicable, role) {
 }
 
 function roleOf(message) {
+  if (message?.source?.kind === "agent-instructions") return "instructions";
   if (message?.role === "toolResult" || message?.role === "tool") return "tool";
   if (message?.role === "assistant") return "assistant";
   if (message?.role === "user") return "user";
