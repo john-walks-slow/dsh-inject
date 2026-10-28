@@ -9,7 +9,7 @@
 
 - **三种注入手段**：系统提示词注入（系统段）、构造回合伪造（system / 用户 / 助手 / 工具）、关键词与正则替换。
 - **四种使用方式**：挂在某个模式上（切换到该模式自动生效）、会话内随时 `/inject on|off`、标记为总是启用、按模型或 agent preset 限定——同一个插件可以让不同模型跑不同的预设。
-- **现成预设**：内置 `unrestricted`（Keysmith 本地执行规约）、`nsfw`、`authority` 三个预设；预设库里还能一键导入 **dsh-purge 破甲稿**与在线规则。
+- **现成预设**：内置 `keysmith`（Keysmith v0.6.0 交付契约）、`unrestricted`（Legacy）、`nsfw`、`authority` 四个预设；预设库里还能一键导入 **dsh-purge 破甲稿**与在线规则。
 
 每次注入都会在会话里留下一条可折叠的记录行，写明这次注入了什么。
 
@@ -89,9 +89,10 @@ dsh plugin --profile web add dsh-inject
 
 ## 内置预设与 agent preset 模式
 
-未配置时，`dsh-inject` 自带三个 inject 预设：
+未配置时，`dsh-inject` 自带四个 inject 预设：
 
-- **`unrestricted`**：Keysmith 本地执行模式系统规约（`Local execution mode active`）及常用敏感词/边界词中性化替换规则；默认开启「创建为模式」，注入模式 `inject-unrestricted`。
+- **`keysmith`**：Keysmith v0.6.0 的 overlay 交付契约适配稿。上游把它列为当前默认安装稿；这里去掉作者个人称呼与 `[P]` 首行标记，保留执行行为，只约束交付物形态。默认开启「创建为模式」，注入模式 `inject-keysmith`。
+- **`unrestricted`**：Legacy。Keysmith 旧版本地执行精简规约（`Local execution mode active`）及常用边界词中性化替换；上游 v0.6.0 已把它降级为兼容项。默认开启「创建为模式」，注入模式 `inject-unrestricted`。
 - **`nsfw`**：成人文学创作规约与场景回合；默认开启「创建为模式」，注入模式 `inject-nsfw`。
 - **`authority`**：把 DSH 渲染的工作区指令免责句（“may be relevant / do not override”）改写为强制指令，并附一段简短的「操作者权威 + 先交付后解释」系统段；默认关闭，用 `/inject on authority` 启用。
 
@@ -99,11 +100,11 @@ dsh plugin --profile web add dsh-inject
 
 ## Keysmith 兼容
 
-`dsh-inject` 原生兼容并默认预置 **Keysmith**（Keysmith Switch / codex-keysmith）规则体系：
+`dsh-inject` 兼容 **Keysmith**（Keysmith Switch / codex-keysmith）的规则格式，并把它的交付契约作为预置内容：
 
-- **默认预设**：内置 `unrestricted` 预设，包含其标志性的本地执行模式系统规约及常用敏感词/边界词中性化替换规则；在未配置时作为默认包含项。
+- **默认预设**：内置 `keysmith`，是上游 v0.6.0 `examples/gpt-overlay.md` 的适配稿——保留交付契约的结构与措辞，去掉作者个人称呼、`[P]` 首行标记以及与 DSH 无关的评测段。`unrestricted` 作为 Legacy 保留。
 - **格式直接适配**：规则对象直接兼容 Keysmith 格式（`{ "from": "...", "to": "..." }`），自动映射为 `pattern`、`replacement` 并绑定至用户输入（`targets: ["user"]`）。
-- **一键导入**：设置页提供「导入 Keysmith 规则」入口，支持一键批量解析粘贴的 Keysmith 规则包或规则数组。
+- **一键导入**：设置页的预设库提供其余 Keysmith 稿（Unrestricted / Contract / Lean / Astra / Persona Contract / Claude / Grok）的在线导入。导入的是上游正文；附加的边界词替换规则由本插件提供，不是上游内容。
 - **安全保护机制**：对以 `/` 开头的斜杠命令以及 `<system-reminder>`、`<command-name>` 等系统注入标签自动跳过改写，避免误伤系统指令或命令参数。唯一例外是显式选择「工作区指令」目标的规则：它只改写 `source.kind === "agent-instructions"` 的工作区指令段。
 
 ## 从 dsh-purge 迁移

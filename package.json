@@ -1,7 +1,7 @@
 {
   "name": "dsh-inject",
   "version": "0.2.3",
-  "description": "Advanced model-context injection and request-only rewriting for DeepSeek Harness with native Keysmith rules compatibility. dsh-inject：为 DeepSeek Harness 提供高级上下文注入与请求侧消息重写，原生兼容 Keysmith 规则集。",
+  "description": "Advanced model-context injection and request-only rewriting for DeepSeek Harness with Keysmith rules compatibility. dsh-inject：为 DeepSeek Harness 提供高级上下文注入与请求侧消息重写，兼容 Keysmith 规则集。",
   "license": "MIT",
   "author": "johnnren",
   "type": "module",

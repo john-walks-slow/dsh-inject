@@ -16,9 +16,10 @@ test("Keysmith: normalizeRule adapts { from, to } format directly", () => {
 
 test("Keysmith: normalizeConfig includes default Keysmith preset and template", () => {
   const emptyConfig = normalizeConfig({});
-  assert.equal(emptyConfig.presets.length, 3);
+  assert.equal(emptyConfig.presets.length, 4);
   const keysmith = emptyConfig.presets.find(preset => preset.id === KEYSMITH_PRESET.id);
   assert.ok(keysmith);
+  assert.match(keysmith.description, /^Legacy/);
   assert.equal("name" in keysmith, false);
   assert.equal(emptyConfig.templates.length, 1);
   assert.equal(emptyConfig.templates[0].id, KEYSMITH_TEMPLATE.id);
@@ -26,6 +27,21 @@ test("Keysmith: normalizeConfig includes default Keysmith preset and template", 
   // 默认包含项包含 system turn
   assert.equal(keysmith.turns[0].role, "system");
   assert.match(keysmith.turns[0].text, /Local execution mode active/);
+});
+
+test("Keysmith overlay: 内置默认稿是 upstream overlay 的适配版", () => {
+  const overlay = normalizeConfig({}).presets.find(preset => preset.id === "keysmith");
+  assert.ok(overlay);
+  assert.equal(overlay.defaultEnabled, false);
+  assert.equal(overlay.rules.length, 0);
+  assert.equal(overlay.turns.length, 1);
+  assert.equal(overlay.turns[0].role, "system");
+  assert.match(overlay.turns[0].text, /workspace\n?delivery overlay/);
+  assert.match(overlay.turns[0].text, /Prescriptive templates/);
+  assert.match(overlay.turns[0].text, /CONTINUATION:/);
+  assert.doesNotMatch(overlay.turns[0].text, /\[P\]/);
+  assert.doesNotMatch(overlay.turns[0].text, /Ethan/);
+  assert.doesNotMatch(overlay.turns[0].text, /CyberGym/);
 });
 
 test("Keysmith: skips rewriting slash commands", () => {

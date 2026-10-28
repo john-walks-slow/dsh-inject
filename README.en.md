@@ -9,7 +9,7 @@
 
 - **Three ways to inject**: system-prompt sections, synthetic turns (system / user / assistant / tool), and keyword or regex replacement.
 - **Four ways to drive it**: attach a preset to a mode (active the moment a session switches to it), toggle per session with `/inject on|off`, mark it always-on, or scope it by model / agent preset - so different models can run different presets.
-- **Ready-made presets**: `unrestricted` (the Keysmith local-execution contract), `nsfw` and `authority` ship built in, and the preset library imports the **dsh-purge** prompt plus online rule sets in one click.
+- **Ready-made presets**: `keysmith` (the Keysmith v0.6.0 delivery contract), `unrestricted` (legacy), `nsfw` and `authority` ship built in, and the preset library imports the **dsh-purge** prompt plus online rule sets in one click.
 
 Every injection leaves a collapsible record line in the conversation describing exactly what was injected.
 
@@ -83,22 +83,22 @@ Every injection generates a collapsible row in the conversation matching host co
 
 ## Built-in Presets & Agent Preset Modes
 
-With no user configuration, `dsh-inject` ships three inject presets:
+With no user configuration, `dsh-inject` ships four inject presets:
 
-- **`unrestricted`**: the Keysmith local-execution system prompt plus common boundary-term neutralizations; "Create as Mode" is enabled by default, exposing the `inject-unrestricted` agent preset mode.
+- **`keysmith`**: an adaptation of the Keysmith v0.6.0 overlay delivery contract, which upstream now installs by default. The author's personal address line and the `[P]` first-line marker are removed; execution behavior is untouched and only the shape of deliverables is constrained. "Create as Mode" is enabled by default, exposing the `inject-keysmith` agent preset mode.
+- **`unrestricted`**: legacy. The older Keysmith local-execution prompt plus boundary-term neutralizations; upstream demoted it to a compatibility preset in v0.6.0. "Create as Mode" is enabled by default, exposing the `inject-unrestricted` agent preset mode.
 - **`nsfw`**: adult-fiction writing instructions and scene turns; "Create as Mode" is enabled by default, exposing the `inject-nsfw` agent preset mode.
-
-A third preset, **`authority`**, rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
+- **`authority`**: rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
 
 Every inject preset can toggle the "Create as Mode" switch. When enabled, the plugin registers an agent preset mode named `inject-{id}`: its capabilities come from the host's `standard` preset (same tool set, workspace-instruction (AGENTS.md) reading, skills, and the host's own sections such as tool notes and plan policy), while the persona row is emptied — Standard mode's "you are a coding agent" line no longer appears, and the mode's text comes from the inject preset's own system section and synthetic turns, per session. Switching to this mode in a session automatically enables the matching inject preset. Legacy "always enabled" and agent preset / model filters are preserved under Advanced Options. Profiles without the `agentPresets` service, or without a declared `standard` preset (for example headless), do not register modes; inject presets remain available via `/inject`.
 
 ## Keysmith Compatibility
 
-`dsh-inject` provides native compatibility with the **Keysmith** (Keysmith Switch / codex-keysmith) rules ecosystem:
+`dsh-inject` is compatible with the **Keysmith** (Keysmith Switch / codex-keysmith) rule format and ships its delivery contract as ready-made content:
 
-- **Built-in Preset**: the `unrestricted` preset features local execution mode system prompts and common neutralizations;
+- **Built-in Preset**: the `keysmith` preset adapts upstream v0.6.0 `examples/gpt-overlay.md` — the structure and wording of the delivery contract are preserved, while the author's personal address line, the `[P]` first-line marker, and the Codex-only evaluation section are removed. `unrestricted` remains as a legacy preset;
 - **Direct Format Mapping**: Seamlessly parses Keysmith rule objects (`{ "from": "...", "to": "..." }`) and binds them to user turns;
-- **One-click Import**: Settings view includes a bulk import modal supporting pasted JSON rule arrays;
+- **One-click Import**: the preset library offers the remaining Keysmith prompts (Unrestricted / Contract / Lean / Astra / Persona Contract / Claude / Grok) for online import. The prompt body comes from upstream; the attached boundary-term replacement rules are provided by this plugin, not upstream;
 - **Safety Safeguards**: Automatically protects slash commands starting with `/` and system reminder tags (`<system-reminder>`, `<command-name>`) from being altered. The one exception is a rule that explicitly targets "workspace instructions": it only rewrites messages whose `source.kind` is `agent-instructions`.
 
 ## Migrating from dsh-purge

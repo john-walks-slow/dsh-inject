@@ -1,7 +1,7 @@
 import { mkdir, copyFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 
-const hostModules = ["index.js", "schema.js", "session-state.js", "transform.js", "command-input.js", "agent-presets.js"];
+const hostModules = ["index.js", "schema.js", "keysmith-overlay.js", "remote-url.js", "session-state.js", "transform.js", "command-input.js", "agent-presets.js"];
 
 await mkdir("lib", { recursive: true });
 for (const file of hostModules) await copyFile(`src/${file}`, `lib/${file}`);

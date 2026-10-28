@@ -639,7 +639,7 @@ function PlaygroundPanel({ presets }) {
           <button
             type="button"
             className="ghost sm"
-            onClick={() => setInputSample("/inject on keysmith-codex-unrestricted")}
+            onClick={() => setInputSample("/inject on keysmith")}
           >
             示例 (斜杠命令保护)
           </button>

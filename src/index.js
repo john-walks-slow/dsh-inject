@@ -3,6 +3,7 @@ import { createAgentPresetManager } from "./agent-presets.js";
 import { activePresetSummary, autoActivationText, INJECT_USAGE, parseInjectInput, presetInjectionSummary, previewText } from "./command-input.js";
 import { defaultPresetIds, normalizeConfig, normalizeTurnMessage } from "./schema.js";
 import { createSessionState, MAX_PENDING_TURNS } from "./session-state.js";
+import { mirrorUrl } from "./remote-url.js";
 import { templateToMessages, transformMessages } from "./transform.js";
 
 export const name = "dsh-inject";
@@ -28,6 +29,28 @@ function readConfig(rawConfig) {
 
 function sessionKey(agentOrId) {
   return String(typeof agentOrId === "object" ? agentOrId.session.id : agentOrId);
+}
+
+const REMOTE_TIMEOUT_MS = 20000;
+const MIRROR_TIMEOUT_MS = 12000;
+
+/** 抓取一段远程文本；超时转成可读错误，避免把 AbortError 直接抛给调用方。 */
+async function fetchRemoteText(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, {
+      signal: controller.signal,
+      headers: { "User-Agent": "dsh-inject (DeepSeek Harness plugin)" }
+    });
+    if (!resp.ok) throw new Error(`remote server returned HTTP ${resp.status}`);
+    return await resp.text();
+  } catch (err) {
+    if (err?.name === "AbortError") throw new Error(`timed out after ${timeoutMs / 1000}s`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** 当前请求的 provider/model；缺失时对应项为 null。模型作用域同时认 model 与 provider/model。 */
@@ -348,22 +371,23 @@ export function apply(ctx, rawConfig = {}) {
           if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
             return writeJson(res, 400, { ok: false, message: "valid http(s) url is required" });
           }
-          try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 12000);
-            const resp = await fetch(url, {
-              signal: controller.signal,
-              headers: { "User-Agent": "dsh-inject/0.1.0 (DeepSeek Harness plugin)" }
-            });
-            clearTimeout(timer);
-            if (!resp.ok) {
-              return writeJson(res, resp.status, { ok: false, message: `Remote server returned HTTP ${resp.status}` });
+          const mirror = mirrorUrl(url);
+          const candidates = [{ label: "raw", url, timeout: REMOTE_TIMEOUT_MS }];
+          if (mirror) candidates.push({ label: "jsDelivr", url: mirror, timeout: MIRROR_TIMEOUT_MS });
+
+          const failures = [];
+          for (const candidate of candidates) {
+            try {
+              const text = await fetchRemoteText(candidate.url, candidate.timeout);
+              return writeJson(res, 200, { ok: true, text });
+            } catch (err) {
+              failures.push(`${candidate.label}: ${err.message}`);
             }
-            const text = await resp.text();
-            writeJson(res, 200, { ok: true, text });
-          } catch (err) {
-            writeJson(res, 502, { ok: false, message: `Failed to fetch remote URL: ${err.message}` });
           }
+          writeJson(res, 502, {
+            ok: false,
+            message: `Failed to fetch remote URL (${failures.join("; ")})`
+          });
         }).catch(error => {
           writeJson(res, 400, { ok: false, message: String(error?.message ?? error) });
         });

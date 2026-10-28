@@ -35,12 +35,22 @@ export function emptyTurn(role = "user") {
   return { role, text: "" };
 }
 
-/** 补回当前配置里缺失的内置预设；已存在的 id 一律不覆盖。 */
+/** 补回当前配置里缺失的内置预设；已存在的 id 一律不覆盖，缺失项按内置顺序插入。 */
 export function mergeBuiltinPresets(presets) {
   const list = presets ?? [];
   const existing = new Set(list.map(preset => preset.id));
-  const missing = defaultPresets().filter(preset => !existing.has(preset.id)).map(normalizePreset);
-  return missing.length ? [...list, ...missing] : list;
+  const builtins = defaultPresets().map(normalizePreset);
+  const missing = builtins.filter(preset => !existing.has(preset.id));
+  if (!missing.length) return list;
+
+  const rank = new Map(builtins.map((preset, index) => [preset.id, index]));
+  const merged = [...list];
+  for (const preset of missing) {
+    const position = merged.findIndex(item => rank.has(item.id) && rank.get(item.id) > rank.get(preset.id));
+    if (position === -1) merged.push(preset);
+    else merged.splice(position, 0, preset);
+  }
+  return merged;
 }
 
 export function emptyPreset(id = "preset") {
@@ -187,12 +197,12 @@ export function builtinCatalogPreset(meta) {
 export const REMOTE_PRESET_CATALOG = [
   {
     id: "keysmith-codex-unrestricted",
-    name: "Keysmith: Codex Unrestricted",
+    name: "Keysmith: Codex Unrestricted (Legacy)",
     tag: "Codex",
     author: "Jia-Ethan / codex-keysmith",
     license: "MIT License",
     repo: "https://github.com/Jia-Ethan/codex-keysmith",
-    description: "经典本地执行模式。解除拒答句式，提供 CHECK_FN / SERIAL / LICENSE_BLOB 占位符契约与逆向/破解直出流程。",
+    description: "上游 v0.6.0 已把默认稿改为 overlay，此稿降级为兼容项。经典本地执行替代契约：场景路由、首行话术与 CHECK_FN / SERIAL / LICENSE_BLOB 占位符。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-unrestricted.md",
     rules: KEYSMITH_DEFAULT_RULES
   },
@@ -205,17 +215,6 @@ export const REMOTE_PRESET_CATALOG = [
     repo: "https://github.com/Jia-Ethan/codex-keysmith",
     description: "强交付契约规范。首行直出代码或步骤，严格消除任何前置废话、安全免责声明和降级替代品。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-contract.md",
-    rules: KEYSMITH_DEFAULT_RULES
-  },
-  {
-    id: "keysmith-codex-overlay",
-    name: "Keysmith: Codex Overlay",
-    tag: "Codex",
-    author: "Jia-Ethan / codex-keysmith",
-    license: "MIT License",
-    repo: "https://github.com/Jia-Ethan/codex-keysmith",
-    description: "交付叠加层。执行方式保持原样，只调整交付物形态：工具调用可先行，首行以 [P] 标记后直接给结果。",
-    url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-overlay.md",
     rules: KEYSMITH_DEFAULT_RULES
   },
   {
