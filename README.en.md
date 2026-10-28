@@ -9,7 +9,7 @@
 
 - **Three ways to inject**: system-prompt sections, synthetic turns (system / user / assistant / tool), and keyword or regex replacement.
 - **Four ways to drive it**: attach a preset to a mode (active the moment a session switches to it), toggle per session with `/inject on|off`, mark it always-on, or scope it by model / agent preset - so different models can run different presets.
-- **Ready-made presets**: `keysmith` (the Keysmith v0.6.0 delivery contract), `unrestricted` (legacy), `nsfw` and `authority` ship built in, and the preset library imports the **dsh-purge** prompt plus online rule sets in one click.
+- **Ready-made presets**: `unrestricted` (the Keysmith v0.6.0 delivery contract), `nsfw` and `authority` ship built in, and the preset library imports the **dsh-purge** prompt plus online rule sets in one click.
 
 Every injection leaves a collapsible record line in the conversation describing exactly what was injected.
 
@@ -83,10 +83,9 @@ Every injection generates a collapsible row in the conversation matching host co
 
 ## Built-in Presets & Agent Preset Modes
 
-With no user configuration, `dsh-inject` ships four inject presets:
+With no user configuration, `dsh-inject` ships three inject presets:
 
-- **`keysmith`**: an adaptation of the Keysmith v0.6.0 overlay delivery contract, which upstream now installs by default. The author's personal address line and the `[P]` first-line marker are removed; execution behavior is untouched and only the shape of deliverables is constrained. "Create as Mode" is enabled by default, exposing the `inject-keysmith` agent preset mode.
-- **`unrestricted`**: legacy. The older Keysmith local-execution prompt plus boundary-term neutralizations; upstream demoted it to a compatibility preset in v0.6.0. "Create as Mode" is enabled by default, exposing the `inject-unrestricted` agent preset mode.
+- **`unrestricted`**: an adaptation of the Keysmith v0.6.0 overlay delivery contract, which upstream now installs by default. The author's personal address line and the `[P]` first-line marker are removed; execution behavior is untouched and only the shape of deliverables is constrained. "Create as Mode" is enabled by default, exposing the `inject-unrestricted` agent preset mode.
 - **`nsfw`**: the chatx factory adult preset (paired adult-confirmation messages, compliance anchor, and age/student-term neutralization); "Create as Mode" is enabled by default, exposing the `inject-nsfw` agent preset mode.
 - **`authority`**: rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
 
@@ -96,7 +95,7 @@ Every inject preset can toggle the "Create as Mode" switch. When enabled, the pl
 
 `dsh-inject` is compatible with the **Keysmith** (Keysmith Switch / codex-keysmith) rule format and ships its delivery contract as ready-made content:
 
-- **Built-in Preset**: the `keysmith` preset adapts upstream v0.6.0 `examples/gpt-overlay.md` — the structure and wording of the delivery contract are preserved, while the author's personal address line, the `[P]` first-line marker, and the Codex-only evaluation section are removed. `unrestricted` remains as a legacy preset;
+- **Built-in Preset**: the `unrestricted` preset adapts upstream v0.6.0 `examples/gpt-overlay.md` — the structure and wording of the delivery contract are preserved, while the author's personal address line, the `[P]` first-line marker, and the Codex-only evaluation section are removed;
 - **Direct Format Mapping**: Seamlessly parses Keysmith rule objects (`{ "from": "...", "to": "..." }`) and binds them to user turns;
 - **One-click Import**: the preset library offers the remaining Keysmith prompts (Unrestricted / Contract / Lean / Astra / Persona Contract / Claude / Grok) for online import. The prompt body comes from upstream; the attached boundary-term replacement rules are provided by this plugin, not upstream;
 - **Safety Safeguards**: Automatically protects slash commands starting with `/` and system reminder tags (`<system-reminder>`, `<command-name>`) from being altered. The one exception is a rule that explicitly targets "workspace instructions": it only rewrites messages whose `source.kind` is `agent-instructions`.

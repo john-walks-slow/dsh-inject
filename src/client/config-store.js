@@ -197,12 +197,12 @@ export function builtinCatalogPreset(meta) {
 export const REMOTE_PRESET_CATALOG = [
   {
     id: "keysmith-codex-unrestricted",
-    name: "Keysmith: Codex Unrestricted (Legacy)",
+    name: "Keysmith: Codex Unrestricted",
     tag: "Codex",
     author: "Jia-Ethan / codex-keysmith",
     license: "MIT License",
     repo: "https://github.com/Jia-Ethan/codex-keysmith",
-    description: "上游 v0.6.0 已把默认稿改为 overlay，此稿降级为兼容项。经典本地执行替代契约：场景路由、首行话术与 CHECK_FN / SERIAL / LICENSE_BLOB 占位符。",
+    description: "上游替代版交付契约：场景路由、首行话术与 CHECK_FN / SERIAL / LICENSE_BLOB 占位符。内置的 `unrestricted` 采用当前默认的 overlay 形态。",
     url: "https://raw.githubusercontent.com/Jia-Ethan/codex-keysmith/main/examples/gpt-unrestricted.md",
     rules: KEYSMITH_DEFAULT_RULES
   },

@@ -51,8 +51,8 @@ test("config-store: cloneRule and clonePreset generate unique ids and copy suffi
 test("config-store: mergeBuiltinPresets only adds missing ids in built-in order", () => {
   const existing = [{ id: "authority", description: "custom" }, { id: "mine" }];
   const merged = mergeBuiltinPresets(existing);
-  assert.deepEqual(merged.map(preset => preset.id), ["keysmith", "unrestricted", "nsfw", "authority", "mine"]);
-  assert.equal(merged[3].description, "custom");
+  assert.deepEqual(merged.map(preset => preset.id), ["unrestricted", "nsfw", "authority", "mine"]);
+  assert.equal(merged[2].description, "custom");
   assert.deepEqual(mergeBuiltinPresets(merged).map(preset => preset.id), merged.map(preset => preset.id));
 });
 

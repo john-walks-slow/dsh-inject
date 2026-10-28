@@ -47,10 +47,9 @@ test("defaultPresetIds: agentPresets 限定默认启用范围", () => {
 
 test("内置预设只在对应 inject-{id} 模式下自动启用", () => {
   const presets = normalizeConfig({}).presets;
-  assert.equal(presets.length, 4);
+  assert.equal(presets.length, 3);
   assert.equal(presets.some(preset => preset.id === "authority"), true);
   assert.deepEqual(defaultPresetIds(presets), []);
-  assert.deepEqual(defaultPresetIds(presets, "inject-keysmith"), ["keysmith"]);
   assert.deepEqual(defaultPresetIds(presets, "inject-unrestricted"), ["unrestricted"]);
   assert.deepEqual(defaultPresetIds(presets, "inject-nsfw"), ["nsfw"]);
   assert.deepEqual(defaultPresetIds(presets, "other"), []);
