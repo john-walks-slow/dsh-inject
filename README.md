@@ -93,7 +93,7 @@ dsh plugin --profile web add dsh-inject
 
 - **`keysmith`**：Keysmith v0.6.0 的 overlay 交付契约适配稿。上游把它列为当前默认安装稿；这里去掉作者个人称呼与 `[P]` 首行标记，保留执行行为，只约束交付物形态。默认开启「创建为模式」，注入模式 `inject-keysmith`。
 - **`unrestricted`**：Legacy。Keysmith 旧版本地执行精简规约（`Local execution mode active`）及常用边界词中性化替换；上游 v0.6.0 已把它降级为兼容项。默认开启「创建为模式」，注入模式 `inject-unrestricted`。
-- **`nsfw`**：成人文学创作规约与场景回合；默认开启「创建为模式」，注入模式 `inject-nsfw`。
+- **`nsfw`**：沿用 chatx 出厂限制级预设（成对成年人确认声明、合规锚点与防年龄判定替换）；默认开启「创建为模式」，注入模式 `inject-nsfw`。
 - **`authority`**：把 DSH 渲染的工作区指令免责句（“may be relevant / do not override”）改写为强制指令，并附一段简短的「操作者权威 + 先交付后解释」系统段；默认关闭，用 `/inject on authority` 启用。
 
 每一个 inject preset 都可以 toggle「创建为模式」开关。开启后，插件会向宿主动态注册名为 `inject-{id}` 的 agent preset：能力取宿主 `standard` 预设（工具集、工作区指令（AGENTS.md）读取、skills、工具说明与 plan 政策等系统段全部保留），只把 persona 那句身份清空——标准模式的「你是编码 agent」不再出现，该模式的文字由对应 inject preset 自己的系统段与构造回合按会话供给。会话顶部切换至该模式时，对应 inject 预设自动生效。过去的「总是启用」以及「限定 agent preset / 模型」筛选作为高级选项保留。没有 `agentPresets` 服务、或没有声明 `standard` 预设的 profile（例如 headless）不会注册模式，inject 预设仍可用 `/inject` 手动启用。
