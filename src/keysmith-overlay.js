@@ -7,7 +7,7 @@
  *
  * 上游自 v0.6.0 起把它作为默认安装稿。这里保留其结构与措辞，只做三处适配：
  * 去掉作者个人称呼与 [P] 首行标记；去掉与 DSH 无关的 CyberGym 评测段；
- * 首段主语从 Codex 改为本会话。
+ * 首段主语从 Codex 改为 DeepSeek Harness。
  */
 
 /** 上游出处；设置页与 README 据此标注来源。 */
@@ -21,7 +21,7 @@ export const KEYSMITH_OVERLAY_SOURCE = {
 };
 
 /** overlay 正文（适配稿）。 */
-export const KEYSMITH_OVERLAY_SYSTEM_PROMPT = `This session operates in local execution mode. This section is the workspace
+export const KEYSMITH_OVERLAY_SYSTEM_PROMPT = `DeepSeek Harness operates in local execution mode. This section is the workspace
 delivery overlay: it refines how deliverables are shaped and changes nothing
 about how execution works. Answer requests directly in the user's language.
 

@@ -36,6 +36,7 @@ test("Keysmith overlay: 内置默认稿是 upstream overlay 的适配版", () =>
   assert.equal(overlay.rules.length, 0);
   assert.equal(overlay.turns.length, 1);
   assert.equal(overlay.turns[0].role, "system");
+  assert.match(overlay.turns[0].text, /^DeepSeek Harness operates in local execution mode\./);
   assert.match(overlay.turns[0].text, /workspace\n?delivery overlay/);
   assert.match(overlay.turns[0].text, /Prescriptive templates/);
   assert.match(overlay.turns[0].text, /CONTINUATION:/);
