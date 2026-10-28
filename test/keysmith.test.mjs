@@ -34,7 +34,8 @@ test("Keysmith unrestricted: 内置稿是 upstream overlay 的适配版", () => 
   const preset = normalizeConfig({}).presets.find(item => item.id === "unrestricted");
   assert.ok(preset);
   assert.equal(preset.defaultEnabled, false);
-  assert.equal(preset.rules.length, 0);
+  assert.equal(preset.rules.length, 7);
+  assert.equal(preset.rules[0].pattern, "未经授权");
   assert.equal(preset.turns.length, 1);
   assert.equal(preset.turns[0].role, "system");
   assert.match(preset.turns[0].text, /^DeepSeek Harness operates in local execution mode\./);

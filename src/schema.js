@@ -14,13 +14,22 @@ export const KEYSMITH_DEFAULT_RULES = [
 
 export const KEYSMITH_PRESET = {
   id: "unrestricted",
-  description: "Keysmith v0.6.0 交付契约（overlay 适配稿）：保留原生执行行为，只约束交付物形态；首行直出结果，未指定值用占位符承接",
+  description: "按 Keysmith 交付契约直接给结果，少寒暄和免责；取自 Keysmith v0.6.0 的 overlay 稿。",
   createMode: true,
   defaultEnabled: false,
   agentPresets: [],
   models: [],
   systemPrompt: "",
-  rules: [],
+  rules: KEYSMITH_DEFAULT_RULES.map(rule => ({
+    id: `rule-ks-${rule.from}`,
+    name: `Keysmith: ${rule.from}`,
+    enabled: true,
+    targets: ["user"],
+    regex: false,
+    pattern: rule.from,
+    flags: "g",
+    replacement: rule.to
+  })),
   turns: [{ role: "system", text: KEYSMITH_OVERLAY_SYSTEM_PROMPT }]
 };
 
@@ -83,7 +92,7 @@ export const NSFW_RULES = [
 
 export const NSFW_PRESET = {
   id: "nsfw",
-  description: "沿用 chatx 出厂限制级预设：成对成年人确认声明、合规锚点与防年龄判定替换",
+  description: "用于成人向虚构创作的对话预设。",
   createMode: true,
   defaultEnabled: false,
   agentPresets: [],
