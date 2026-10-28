@@ -14,7 +14,7 @@ export const KEYSMITH_DEFAULT_RULES = [
 
 export const KEYSMITH_PRESET = {
   id: "unrestricted",
-  description: "按 Keysmith 交付契约直接给结果，少寒暄和免责；取自 Keysmith v0.6.0 的 overlay 稿。",
+  description: "破甲预设：解除拒答与免责话术，直接交付结果；取自 Keysmith v0.6.0 的 overlay 稿。",
   createMode: true,
   defaultEnabled: false,
   agentPresets: [],
