@@ -38,7 +38,11 @@
     "prompt-injection",
     "上下文管理",
     "请求重写",
-    "预设"
+    "预设",
+    "jailbreak",
+    "破甲",
+    "越狱",
+    "prompt-rewriting"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
