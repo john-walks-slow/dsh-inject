@@ -18,7 +18,20 @@
 ## 安装
 
 ```bash
-dsh plugin --profile web add dsh-inject
+dsh plugin --profile web add github:john-walks-slow/dsh-inject
+```
+
+从 git 安装拿到的是源码，包内的 `prepare` 会在安装时构建 `lib/`。如果 pnpm 拦下了构建脚本、导致安装失败，按 dsh 的提示把包键写进该 profile 的 `pnpm-workspace.yaml` 后重试：
+
+```yaml
+allowBuilds:
+  dsh-inject: true
+```
+
+建议锁定 commit 安装，后续推送就不会悄悄改变实际运行的代码：
+
+```bash
+dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
 ```
 
 安装后无需改配置：包内自带 `dsh.bundle.patch`，重启 dsh 即生效。

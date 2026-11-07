@@ -18,7 +18,20 @@ Every injection leaves a collapsible record line in the conversation describing 
 ## Installation
 
 ```bash
-dsh plugin --profile web add dsh-inject
+dsh plugin --profile web add github:john-walks-slow/dsh-inject
+```
+
+A git install fetches source, and the package's `prepare` script builds `lib/` during install. If pnpm blocks the build script and the install fails, copy the package key dsh prints into that profile's `pnpm-workspace.yaml`, then retry:
+
+```yaml
+allowBuilds:
+  dsh-inject: true
+```
+
+Pinning a commit is recommended: later pushes cannot silently change what actually runs.
+
+```bash
+dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
 ```
 
 No configuration needed: the package ships its own `dsh.bundle.patch`; restart dsh to load it.
