@@ -22,3 +22,4 @@
 - 现场 dialog **不放在输入栏按钮里**：它挂在 `conversation.input.overlay`，由 `ctx.commandUi.decorate({ name: "inject-turn", ui: { kind: "action" } })` 在裸调用时打开。装饰只接管裸调用，带参数的 `/inject-turn` 仍走宿主命令处理器。
 - 客户端命令贡献（`commandUi.register`）的名字与宿主命令同名会 fail loud；要改宿主命令的裸调用行为请用 `decorate`。
 - 不要用宿主包（`@deepseek-ai/dsh-llm` 等）的模块级私有状态做跨包判定：link 安装下本插件自带的依赖副本与 dsh 运行时那份不是同一模块实例，WeakSet/Map 标记跨实例不可见。判 agent-loop 请求用 `isLoopRequest`（冻结 + sessionId + messages）。
+- 发布：npm 通道目前不可用（0.3.3 被 publish-time 扫描判为 malware 并冻结账号），新版本只走 GitHub。每次发版除打 tag 外，还要在 Release 上传预构建包 `dsh-inject.tgz`（名称不带版本号）与 `dsh-inject-<version>.tgz`；README 与 awesome 条目用 `releases/latest/download/dsh-inject.tgz` 指向它，缺了这个资产链接会 404。
