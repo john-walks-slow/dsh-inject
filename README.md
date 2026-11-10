@@ -9,7 +9,7 @@
 
 - **三种注入手段**：系统提示词注入（系统段）、构造回合伪造（system / 用户 / 助手 / 工具）、关键词与正则替换。
 - **四种使用方式**：挂在某个模式上（切换到该模式自动生效）、会话内随时 `/inject on|off`、标记为总是启用、按模型或 agent preset 限定——同一个插件可以让不同模型跑不同的预设。
-- **现成预设**：内置 `unrestricted`（Keysmith v0.6.0 交付契约）、`nsfw`、`authority` 三个预设；预设库里还能一键导入 **dsh-purge 破甲稿**与在线规则。
+- **现成预设**：内置 `unrestricted`（Keysmith v0.6.0 交付契约）与 `authority`；预设库可一键导入 **dsh-purge 破甲稿**、**NSFW 成人向预设**与其余 Keysmith 稿。
 
 每次注入都会在会话里留下一条可折叠的记录行，写明这次注入了什么。
 
@@ -110,11 +110,12 @@ dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
 
 ## 内置预设与 agent preset 模式
 
-未配置时，`dsh-inject` 自带三个 inject 预设：
+未配置时，`dsh-inject` 自带两个 inject 预设：
 
 - **`unrestricted`**：Keysmith v0.6.0 的 overlay 交付契约适配稿。上游把它列为当前默认安装稿；这里去掉作者个人称呼与 `[P]` 首行标记，保留执行行为，只约束交付物形态，并附常用边界词中性化替换。默认开启「创建为模式」，注入模式 `inject-unrestricted`。
-- **`nsfw`**：成人文学创作规约与场景回合；默认开启「创建为模式」，注入模式 `inject-nsfw`。
 - **`authority`**：把 DSH 渲染的工作区指令免责句（“may be relevant / do not override”）改写为强制指令，并附一段简短的「操作者权威 + 先交付后解释」系统段；默认关闭，用 `/inject on authority` 启用。
+
+`dsh-purge 破甲稿` 与 `nsfw` 不随包分发：插件装好后第一次打开设置页会有导入引导，在「导入 / 导出 → 预设库」点一次即可从 [dsh-inject-presets](https://github.com/john-walks-slow/dsh-inject-presets) 拉取正文，导入后写入本地配置，之后离线可用。这样 npm 包本身只含注入引擎与中性预设。
 
 每一个 inject preset 都可以 toggle「创建为模式」开关。开启后，插件会向宿主动态注册名为 `inject-{id}` 的 agent preset：能力取宿主 `standard` 预设（工具集、工作区指令（AGENTS.md）读取、skills、工具说明与 plan 政策等系统段全部保留），只把 persona 那句身份清空——标准模式的「你是编码 agent」不再出现，该模式的文字由对应 inject preset 自己的系统段与构造回合按会话供给。会话顶部切换至该模式时，对应 inject 预设自动生效。过去的「总是启用」以及「限定 agent preset / 模型」筛选作为高级选项保留。没有 `agentPresets` 服务、或没有声明 `standard` 预设的 profile（例如 headless）不会注册模式，inject 预设仍可用 `/inject` 手动启用。
 
@@ -131,9 +132,9 @@ dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
 
 [dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)（[镜像](https://github.com/mmparko/dsh-purge)）是 DSH 社区早期最流行的破甲插件，原仓库已删除、上游停更。它的做法是给宿主落盘打补丁；本插件不改宿主，因此可以把它那篇提示词作为**普通预设**导入：
 
-设置页 →「导入 / 导出」→「内置预设」→「dsh-purge 破甲稿」→ 导入，然后 `/inject on dsh-purge` 启用。
+设置页 →「导入 / 导出」→「预设库」→「dsh-purge 破甲稿」→ 导入，然后 `/inject on dsh-purge` 启用。正文来自 [dsh-inject-presets](https://github.com/john-walks-slow/dsh-inject-presets) 仓库，导入时拉取一次。
 
-- 正文与 dsh-purge v1.1.71 的原稿逐字一致（原文以 AES-256-GCM 密封在其 `lib/asset-table.js`，这里只把换行统一成 LF）。导入后可自由编辑、删除。
+- 正文与 dsh-purge v1.1.71 的原稿逐字一致（原文以 AES-256-GCM 密封在其 `lib/asset-table.js`，这里只把换行统一成 LF），放在独立仓库维护。导入后可自由编辑、删除。
 - 导入后作为 **system 构造回合**注入，也就是说在 minimal 等 complete 系统提示模式下同样生效。
 - 不默认启用、不自动包含：只有点过「导入」的会话/配置里才有它。
 - 出处与许可：作者 **YuJunZhiXue（小杨）**，MIT License，`Copyright (c) 2026 小杨`。原作者的署名要求与非盈利条款一并沿用：不得用于卖课、卖插件、卖 token、倒卖等收费行为。

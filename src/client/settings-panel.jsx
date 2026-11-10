@@ -15,8 +15,6 @@ import {
   parsePresets,
   simulateReplacement,
   REMOTE_PRESET_CATALOG,
-  BUILTIN_IMPORT_CATALOG,
-  builtinCatalogPreset,
   fetchRemoteText,
   assemblePresetFromRemote
 } from "./config-store.js";
@@ -29,11 +27,8 @@ const ROLES = [
   { id: "instructions", label: "工作区指令" }
 ];
 
-/** 导入面板的统一列表：内置条目与在线条目并列展示。 */
-const HUB_ENTRIES = [
-  ...BUILTIN_IMPORT_CATALOG.map(meta => ({ meta, inline: true })),
-  ...REMOTE_PRESET_CATALOG.map(meta => ({ meta, inline: false }))
-];
+/** 预设库列表：正文不随插件分发，导入时从上游仓库实时拉取。 */
+const HUB_ENTRIES = REMOTE_PRESET_CATALOG.map(meta => ({ meta }));
 
 const TURN_ROLES = [
   { id: "system", label: "系统", className: "system" },
@@ -689,7 +684,7 @@ function PlaygroundPanel({ presets }) {
   );
 }
 
-function HubCard({ meta, inline, busy, onImport }) {
+function HubCard({ meta, busy, onImport }) {
   return (
     <div className="inject-hub-card">
       <div className="inject-hub-card-main">
@@ -705,7 +700,7 @@ function HubCard({ meta, inline, busy, onImport }) {
         <div className="inject-hub-desc">{meta.description}</div>
         <div className="inject-hub-meta">
           来源: <a href={meta.repo} target="_blank" rel="noreferrer">{meta.author}</a>
-          {inline ? ` · 正文 ${meta.chars.toLocaleString()} 字符` : ` · 规则: ${meta.rules.length} 条`}
+          {` · 规则: ${(meta.rules ?? []).length} 条`}
         </div>
       </div>
       <div className="row" style={{ flexShrink: 0 }}>
@@ -766,14 +761,6 @@ function ImportExportModal({
     } finally {
       setFetchingId("");
     }
-  };
-
-  const handleBuiltinImport = meta => {
-    const preset = builtinCatalogPreset(meta);
-    if (!preset) return;
-    onAppendPreset(preset);
-    setFetchNotice(`✓ 已导入「${meta.name}」，用 /inject on ${preset.id} 启用`);
-    setTimeout(() => setFetchNotice(""), 5000);
   };
 
   const handleCustomFetch = async () => {
@@ -871,13 +858,12 @@ function ImportExportModal({
         {tab === "hub" && (
           <div className="col" style={{ gap: 14 }}>
             <div className="inject-hub-list">
-              {HUB_ENTRIES.map(({ meta, inline }) => (
+              {HUB_ENTRIES.map(({ meta }) => (
                 <HubCard
                   key={meta.id}
                   meta={meta}
-                  inline={inline}
                   busy={fetchingId === meta.id}
-                  onImport={inline ? handleBuiltinImport : handleLiveFetch}
+                  onImport={handleLiveFetch}
                 />
               ))}
             </div>
@@ -1005,10 +991,20 @@ function ImportExportModal({
   );
 }
 
+const GUIDE_KEY = "dsh-inject:guide-dismissed";
+
 export function SettingsPanel({ scope }) {
   const { draft, setDraft, dirty, save, discard, saving, error } = useLocalConfig(scope);
   const [activeTab, setActiveTab] = useState("presets");
   const [modalState, setModalState] = useState({ open: false, targetPreset: null });
+  const [showGuide, setShowGuide] = useState(() => {
+    try { return localStorage.getItem(GUIDE_KEY) !== "1"; } catch { return true; }
+  });
+
+  const dismissGuide = () => {
+    try { localStorage.setItem(GUIDE_KEY, "1"); } catch { /* 忽略存储不可用 */ }
+    setShowGuide(false);
+  };
 
   const presets = draft.presets ?? [];
   const templates = draft.templates ?? [];
@@ -1083,6 +1079,25 @@ export function SettingsPanel({ scope }) {
         </div>
 
       </div>
+
+      {showGuide && (
+        <div className="inject-guide">
+          <div className="inject-guide-text">
+            <strong>先导入一个预设</strong>
+            <p>插件只自带 `unrestricted` 与 `authority`。预设库里的 dsh-purge 破甲稿、NSFW 与 Keysmith 稿需要点一次「导入」从上游仓库拉取，导入后写入本地配置，之后离线可用。</p>
+          </div>
+          <div className="row" style={{ gap: 8, flexShrink: 0 }}>
+            <button
+              type="button"
+              className="primary sm"
+              onClick={() => setModalState({ open: true, targetPreset: null })}
+            >
+              打开预设库
+            </button>
+            <button type="button" className="ghost sm" onClick={dismissGuide}>知道了</button>
+          </div>
+        </div>
+      )}
 
       <div className="inject-tab-row">
         <div className="inject-tabs">

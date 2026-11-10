@@ -16,7 +16,7 @@
 - 不要给模式的 persona 标 `complete`：那会让宿主的工具说明、plan 政策等系统段一并消失（能力回退），本插件的系统段也进不了请求。
 - 配置页与现场 dialog 共用 `src/client/config-store.js`；写入用「本地草稿 + 合并队列」，不要在 input onChange 里直接整表覆盖。
 - 预设字段（如 `systemPrompt`、`models`）必须同时经过 `schema.normalizePreset`、`config-store.emptyPreset` 与 `clonePreset`，否则导入/克隆会丢字段。
-- 第三方提示词（如 `src/client/purge-prompt.js` 的 dsh-purge 破甲稿）只进 client bundle、不写进 host 拷贝清单，并且必须带来源与许可头；正文逐字保留，不改写。
+- 第三方提示词正文（dsh-purge 破甲稿、`nsfw` 预设）放在独立仓库 `john-walks-slow/dsh-inject-presets`，由设置页「预设库」在线导入；不要把它们重新打包进 `lib/` 或 client bundle——npm 的发布扫描会判 malware 并冻结账号（2026-11-07 已发生）。导入侧必须带来源与许可信息。
 - 规则目标 `instructions` 只匹配 `source.kind === "agent-instructions"` 的消息，并跳过 `<system-reminder>` 保护；新增目标要同步 `schema.normalizeRule`、`transform.roleOf`、`config-store.simulateReplacement` 与设置页 `ROLES`。
 - 设置页命名空间是 `cordis.patch.yml` 的 entry id（`inject`），不是包名。
 - 现场 dialog **不放在输入栏按钮里**：它挂在 `conversation.input.overlay`，由 `ctx.commandUi.decorate({ name: "inject-turn", ui: { kind: "action" } })` 在裸调用时打开。装饰只接管裸调用，带参数的 `/inject-turn` 仍走宿主命令处理器。

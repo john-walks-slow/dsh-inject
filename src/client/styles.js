@@ -421,6 +421,16 @@ body[data-ds-dark-theme] .dsh-inject,
 .dsh-inject .inject-hub-meta a { color: var(--inject-brand); text-decoration: none; }
 .dsh-inject .inject-hub-meta a:hover { text-decoration: underline; }
 
+/* 首次打开的导入引导 */
+.dsh-inject .inject-guide {
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  border: 1px solid var(--inject-border-focus); border-radius: 8px;
+  background: var(--inject-brand-bg); padding: 12px 14px; margin: 12px 0 4px;
+}
+.dsh-inject .inject-guide-text { display: flex; flex-direction: column; gap: 2px; }
+.dsh-inject .inject-guide-text strong { font-size: 13px; color: var(--inject-text-primary); }
+.dsh-inject .inject-guide-text p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--inject-text-secondary); }
+
 /* 模态框通用 */
 .dsh-inject-mask {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);

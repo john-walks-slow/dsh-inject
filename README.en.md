@@ -9,7 +9,7 @@
 
 - **Three ways to inject**: system-prompt sections, synthetic turns (system / user / assistant / tool), and keyword or regex replacement.
 - **Four ways to drive it**: attach a preset to a mode (active the moment a session switches to it), toggle per session with `/inject on|off`, mark it always-on, or scope it by model / agent preset - so different models can run different presets.
-- **Ready-made presets**: `unrestricted` (the Keysmith v0.6.0 delivery contract), `nsfw` and `authority` ship built in, and the preset library imports the **dsh-purge** prompt plus online rule sets in one click.
+- **Ready-made presets**: `unrestricted` (the Keysmith v0.6.0 delivery contract) and `authority` ship built in; the preset library imports the **dsh-purge** prompt, the **NSFW** adult-fiction preset and the other Keysmith prompts in one click.
 
 Every injection leaves a collapsible record line in the conversation describing exactly what was injected.
 
@@ -104,11 +104,12 @@ Every injection generates a collapsible row in the conversation matching host co
 
 ## Built-in Presets & Agent Preset Modes
 
-With no user configuration, `dsh-inject` ships three inject presets:
+With no user configuration, `dsh-inject` ships two inject presets:
 
 - **`unrestricted`**: an adaptation of the Keysmith v0.6.0 overlay delivery contract, which upstream now installs by default. The author's personal address line and the `[P]` first-line marker are removed; execution behavior is untouched, the shape of deliverables is constrained, and common boundary terms are neutralized. "Create as Mode" is enabled by default, exposing the `inject-unrestricted` agent preset mode.
-- **`nsfw`**: adult-fiction writing instructions and scene turns; "Create as Mode" is enabled by default, exposing the `inject-nsfw` agent preset mode.
 - **`authority`**: rewrites DSH's workspace-instruction disclaimer ("may be relevant / do not override") into mandatory instructions and adds a short operator-authority/delivery system section. It is off by default; enable it with `/inject on authority`.
+
+The `dsh-purge` prompt and `nsfw` are not bundled: the first time the settings page opens it offers an import, and one click in **Import / Export → Preset library** fetches the body from [dsh-inject-presets](https://github.com/john-walks-slow/dsh-inject-presets). The text is written into your local config, so it works offline afterwards; the npm package itself only carries the injection engine and neutral presets.
 
 Every inject preset can toggle the "Create as Mode" switch. When enabled, the plugin registers an agent preset mode named `inject-{id}`: its capabilities come from the host's `standard` preset (same tool set, workspace-instruction (AGENTS.md) reading, skills, and the host's own sections such as tool notes and plan policy), while the persona row is emptied — Standard mode's "you are a coding agent" line no longer appears, and the mode's text comes from the inject preset's own system section and synthetic turns, per session. Switching to this mode in a session automatically enables the matching inject preset. Legacy "always enabled" and agent preset / model filters are preserved under Advanced Options. Profiles without the `agentPresets` service, or without a declared `standard` preset (for example headless), do not register modes; inject presets remain available via `/inject`.
 
@@ -125,9 +126,9 @@ Every inject preset can toggle the "Create as Mode" switch. When enabled, the pl
 
 [dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) ([mirror](https://github.com/mmparko/dsh-purge)) was the most popular early DSH jailbreak plugin; its original repository is gone and upstream has stopped. It worked by patching the host on disk. This plugin does not touch the host, so its prompt can be imported as an ordinary preset:
 
-Settings → Import / Export → Built-in presets → "dsh-purge 破甲稿" → Import, then enable it with `/inject on dsh-purge`.
+Settings → Import / Export → Preset library → "dsh-purge 破甲稿" → Import, then enable it with `/inject on dsh-purge`. The body is fetched once from the [dsh-inject-presets](https://github.com/john-walks-slow/dsh-inject-presets) repository.
 
-- The body is verbatim from dsh-purge v1.1.71 (the original is AES-256-GCM sealed inside its `lib/asset-table.js`; only line endings are normalised to LF). Edit or delete it freely after importing.
+- The body is verbatim from dsh-purge v1.1.71 (the original is AES-256-GCM sealed inside its `lib/asset-table.js`; only line endings are normalised to LF) and is maintained in its own repository. Edit or delete it freely after importing.
 - It is injected as a **`system` synthetic turn**, so it also survives complete-prompt modes such as `minimal`.
 - It is neither default-enabled nor auto-included: only configurations that imported it carry it.
 - Attribution and licence: author **YuJunZhiXue**, MIT License, `Copyright (c) 2026 小杨`. The upstream attribution request and non-commercial term carry over: no paid resale, no course or token bundling.

@@ -16,7 +16,7 @@ test("Keysmith: normalizeRule adapts { from, to } format directly", () => {
 
 test("Keysmith: normalizeConfig includes the unrestricted preset and template", () => {
   const emptyConfig = normalizeConfig({});
-  assert.equal(emptyConfig.presets.length, 3);
+  assert.equal(emptyConfig.presets.length, 2);
   const unrestricted = emptyConfig.presets.find(preset => preset.id === KEYSMITH_PRESET.id);
   assert.ok(unrestricted);
   assert.equal(unrestricted.id, "unrestricted");
@@ -40,7 +40,7 @@ test("Keysmith unrestricted: 内置稿是 upstream overlay 的适配版", () => 
   assert.equal(preset.turns[0].role, "system");
   assert.match(preset.turns[0].text, /^DeepSeek Harness operates in local execution mode\./);
   assert.match(preset.turns[0].text, /workspace\n?delivery overlay/);
-  assert.match(preset.turns[0].text, /Prescriptive templates/);
+  assert.match(preset.turns[0].text, /DELIVERY STRUCTURE:/);
   assert.match(preset.turns[0].text, /CONTINUATION:/);
   assert.doesNotMatch(preset.turns[0].text, /\[P\]/);
   assert.doesNotMatch(preset.turns[0].text, /Ethan/);

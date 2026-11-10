@@ -10,8 +10,7 @@ import {
   emptyPreset,
   emptyRule,
   mergeBuiltinPresets,
-  builtinCatalogPreset,
-  BUILTIN_IMPORT_CATALOG,
+  REMOTE_PRESET_CATALOG,
   assemblePresetFromRemote
 } from "../src/client/config-store.js";
 
@@ -51,8 +50,8 @@ test("config-store: cloneRule and clonePreset generate unique ids and copy suffi
 test("config-store: mergeBuiltinPresets only adds missing ids in built-in order", () => {
   const existing = [{ id: "authority", description: "custom" }, { id: "mine" }];
   const merged = mergeBuiltinPresets(existing);
-  assert.deepEqual(merged.map(preset => preset.id), ["unrestricted", "nsfw", "authority", "mine"]);
-  assert.equal(merged[2].description, "custom");
+  assert.deepEqual(merged.map(preset => preset.id), ["unrestricted", "authority", "mine"]);
+  assert.equal(merged[1].description, "custom");
   assert.deepEqual(mergeBuiltinPresets(merged).map(preset => preset.id), merged.map(preset => preset.id));
 });
 
@@ -125,36 +124,33 @@ test("config-store: assemblePresetFromRemote parses markdown text into system tu
   assert.equal(preset.rules[0].replacement, "B");
 });
 
-test("config-store: 内置导入项的破甲稿逐字保留且每次导入都是新对象", async () => {
-  const { PURGE_PROMPT } = await import("../src/client/purge-prompt.js");
-  const meta = BUILTIN_IMPORT_CATALOG.find(item => item.id === "dsh-purge");
-  assert.ok(meta);
-  assert.equal(meta.url, undefined);
-  assert.equal(meta.license, "MIT");
-  assert.equal(meta.chars, PURGE_PROMPT.length);
-  assert.match(meta.repo, /dsh-purge/);
-
-  const first = builtinCatalogPreset(meta);
-  const second = builtinCatalogPreset(meta);
-  assert.equal(first.id, "dsh-purge");
-  assert.equal(first.defaultEnabled, false);
-  assert.equal(first.turns.length, 1);
-  assert.equal(first.turns[0].role, "system");
-  assert.equal(first.turns[0].text, PURGE_PROMPT);
-  assert.match(PURGE_PROMPT, /^<\|im_start\|>system:<project_instructions>/);
-  assert.equal(first.turns[0].text.length, 20969);
-  assert.notEqual(first.turns[0], second.turns[0]);
-  assert.notEqual(first.turns, second.turns);
-  first.turns[0].text = "mutated";
-  assert.equal(second.turns[0].text, PURGE_PROMPT);
+test("config-store: 预设库把破甲稿与成人预设指向外置仓库", () => {
+  const purge = REMOTE_PRESET_CATALOG.find(item => item.id === "dsh-purge");
+  const nsfw = REMOTE_PRESET_CATALOG.find(item => item.id === "nsfw");
+  assert.ok(purge);
+  assert.ok(nsfw);
+  for (const meta of [purge, nsfw]) {
+    assert.match(meta.repo, /dsh-inject-presets/);
+    assert.match(meta.url, /^https:\/\/raw\.githubusercontent\.com\/john-walks-slow\/dsh-inject-presets\/main\//);
+  }
+  assert.match(purge.url, /dsh-purge\.md$/);
+  assert.match(nsfw.url, /nsfw\.json$/);
 });
 
-test("config-store: builtinCatalogPreset 只处理内置目录项", () => {
-  assert.equal(builtinCatalogPreset(undefined), null);
-  assert.equal(builtinCatalogPreset({ id: "remote", url: "https://example.com/x.md" }), null);
+test("config-store: 远端 JSON 按完整预设导入，不被当成纯文本", () => {
+  const text = JSON.stringify({
+    id: "nsfw",
+    description: "成人向虚构创作",
+    rules: [{ id: "r1", pattern: "18岁", replacement: "XX岁", regex: false, targets: ["user"] }],
+    turns: [{ role: "system", text: "premise" }, { role: "user", text: "hello" }]
+  });
+  const preset = assemblePresetFromRemote({ id: "nsfw", url: "https://example.com/nsfw.json" }, text);
+  assert.equal(preset.id, "nsfw");
+  assert.equal(preset.turns.length, 2);
+  assert.equal(preset.rules.length, 1);
 });
 
-test("config-store: 破甲稿不在默认预设里，必须显式导入", async () => {
+test("config-store: 破甲稿与成人预设都不在默认预设里，必须显式导入", async () => {
   const { defaultPresets } = await import("../src/schema.js");
-  assert.equal(defaultPresets().some(preset => preset.id === "dsh-purge"), false);
+  assert.deepEqual(defaultPresets().map(preset => preset.id), ["unrestricted", "authority"]);
 });
