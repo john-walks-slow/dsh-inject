@@ -28,6 +28,12 @@ allowBuilds:
   dsh-inject: true
 ```
 
+不想在安装时执行构建脚本的话，用 Release 里的预构建包（依赖已装好，装上即用）：
+
+```bash
+dsh plugin --profile web add https://github.com/john-walks-slow/dsh-inject/releases/latest/download/dsh-inject.tgz
+```
+
 建议锁定 commit 安装，后续推送就不会悄悄改变实际运行的代码：
 
 ```bash
@@ -35,6 +41,8 @@ dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
 ```
 
 安装后无需改配置：包内自带 `dsh.bundle.patch`，重启 dsh 即生效。
+
+> npm 上的 `dsh-inject` 停在 0.2.3（发布通道受限），新版本只通过 GitHub 分发。
 
 > **兼容性**：面向 **dsh 0.2.1-rc.2 及以上**。宿主包全部走 `peerDependencies`（不随插件装进 profile），因此插件永远不会把旧版 `dsh-tools` / `dsh-commands` 之类带进 profile 顶掉宿主组件；在不兼容的 dsh 上，宿主会按 peer 检查**跳过**这个插件并给出提示，而不是让 dsh 起不来。
 

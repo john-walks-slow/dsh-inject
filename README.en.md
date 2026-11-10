@@ -28,6 +28,12 @@ allowBuilds:
   dsh-inject: true
 ```
 
+To skip the install-time build, use the prebuilt tarball from the latest release:
+
+```bash
+dsh plugin --profile web add https://github.com/john-walks-slow/dsh-inject/releases/latest/download/dsh-inject.tgz
+```
+
 Pinning a commit is recommended: later pushes cannot silently change what actually runs.
 
 ```bash
@@ -35,6 +41,8 @@ dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
 ```
 
 No configuration needed: the package ships its own `dsh.bundle.patch`; restart dsh to load it.
+
+> npm still lists `dsh-inject` at 0.2.3 — publishing is restricted, so new versions are distributed through GitHub only.
 
 > **Compatibility**: built for **dsh 0.2.1-rc.2 and later**. Every host package is declared as a `peerDependencies` entry (never installed into your profile), so the plugin can no longer shadow the installation's own `dsh-tools` / `dsh-commands` rows; on an incompatible dsh the host **skips** the plugin with a diagnostic instead of failing to start.
 
