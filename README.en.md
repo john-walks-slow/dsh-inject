@@ -17,34 +17,21 @@ Every injection leaves a collapsible record line in the conversation describing 
 
 ## Installation
 
-```bash
-dsh plugin --profile web add github:john-walks-slow/dsh-inject
-```
-
-A git install fetches source, and the package's `prepare` script builds `lib/` during install. If pnpm blocks the build script and the install fails, copy the package key dsh prints into that profile's `pnpm-workspace.yaml`, then retry:
-
-```yaml
-allowBuilds:
-  dsh-inject: true
-```
-
-To skip the install-time build, use the prebuilt tarball from the latest release:
+Install the prebuilt tarball (recommended, no local build):
 
 ```bash
 dsh plugin --profile web add https://github.com/john-walks-slow/dsh-inject/releases/latest/download/dsh-inject.tgz
 ```
 
-Pinning a commit is recommended: later pushes cannot silently change what actually runs.
+Or install from source:
 
 ```bash
-dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
+dsh plugin --profile web add github:john-walks-slow/dsh-inject
 ```
 
-No configuration needed: the package ships its own `dsh.bundle.patch`; restart dsh to load it.
+> **About npm**: npm classified the preset prompt text inside the package as malware; the account is suspended and an appeal is in progress, so GitHub is the only install channel for now.
 
-> npm still lists `dsh-inject` at 0.2.3 — publishing is restricted, so new versions are distributed through GitHub only.
-
-> **Compatibility**: built for **dsh 0.2.1-rc.2 and later**. Every host package is declared as a `peerDependencies` entry (never installed into your profile), so the plugin can no longer shadow the installation's own `dsh-tools` / `dsh-commands` rows; on an incompatible dsh the host **skips** the plugin with a diagnostic instead of failing to start.
+> **Compatibility**: built for dsh 0.2.1-rc.2 and later.
 
 ## Core Semantics
 
@@ -142,6 +129,10 @@ Settings → Import / Export → Preset library → "dsh-purge 破甲稿" → Im
 - System sections require the host's `systemPrompt` service; when it is unavailable the section is skipped, while rules and synthetic turns still work;
 - System sections follow the host's prompt assembly rules. If the current agent preset uses a complete system prompt (for example `minimal`), the host keeps only the complete section and the system section is dropped; use head synthetic turns for those modes.
 - "Create as Mode" takes its capability rows from the host-declared `standard` preset and empties the persona row without marking it complete: Standard mode's persona line is replaced, while the host's other sections (tool notes, plan policy) still reach the request. A profile without a `standard` preset registers no modes (the process log says so).
+
+## Acknowledgements
+
+- **[Keysmith](https://github.com/Jia-Ethan/codex-keysmith)** by [Jia-Ethan](https://github.com/Jia-Ethan), MIT License. The `unrestricted` preset is adapted from its v0.6.0 [`examples/gpt-overlay.md`](https://github.com/Jia-Ethan/codex-keysmith/blob/main/examples/gpt-overlay.md), and the rule format is directly compatible with Keysmith. The related [claude-keysmith](https://github.com/Jia-Ethan/claude-keysmith) and [grok-keysmith](https://github.com/Jia-Ethan/grok-keysmith) repositories provide the other online presets in the library.
 
 ## License
 

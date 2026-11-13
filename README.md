@@ -17,34 +17,21 @@
 
 ## 安装
 
-```bash
-dsh plugin --profile web add github:john-walks-slow/dsh-inject
-```
-
-从 git 安装拿到的是源码，包内的 `prepare` 会在安装时构建 `lib/`。如果 pnpm 拦下了构建脚本、导致安装失败，按 dsh 的提示把包键写进该 profile 的 `pnpm-workspace.yaml` 后重试：
-
-```yaml
-allowBuilds:
-  dsh-inject: true
-```
-
-不想在安装时执行构建脚本的话，用 Release 里的预构建包（依赖已装好，装上即用）：
+用预构建包安装（推荐，无需本地构建）：
 
 ```bash
 dsh plugin --profile web add https://github.com/john-walks-slow/dsh-inject/releases/latest/download/dsh-inject.tgz
 ```
 
-建议锁定 commit 安装，后续推送就不会悄悄改变实际运行的代码：
+或从源码安装：
 
 ```bash
-dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
+dsh plugin --profile web add github:john-walks-slow/dsh-inject
 ```
 
-安装后无需改配置：包内自带 `dsh.bundle.patch`，重启 dsh 即生效。
+> **关于 npm**：npm 把包内的预设提示词判成了恶意内容，当前账号已经被冻结，正在申诉中，期间只能从 GitHub 安装。
 
-> npm 上的 `dsh-inject` 停在 0.2.3（发布通道受限），新版本只通过 GitHub 分发。
-
-> **兼容性**：面向 **dsh 0.2.1-rc.2 及以上**。宿主包全部走 `peerDependencies`（不随插件装进 profile），因此插件永远不会把旧版 `dsh-tools` / `dsh-commands` 之类带进 profile 顶掉宿主组件；在不兼容的 dsh 上，宿主会按 peer 检查**跳过**这个插件并给出提示，而不是让 dsh 起不来。
+> **兼容性**：面向 dsh 0.2.1-rc.2 及以上。
 
 ## 核心语义
 
@@ -152,6 +139,10 @@ dsh plugin --profile web add github:john-walks-slow/dsh-inject#<sha>
 - 系统段遵循宿主的系统提示组装规则：如果当前 agent preset 使用 complete 系统提示（例如 minimal），宿主只保留 complete 段，系统段不会进入请求；这类模式请用「开头构造回合」承载系统文字。
 - 「创建为模式」的能力行取自宿主声明的 `standard` preset，身份行清空但**不**标 complete：标准模式那句 persona 被换掉，宿主其余系统段（含工具说明、plan 政策）照常进入请求。profile 没有 `standard` preset 时不注册模式（进程日志里会说明）。
 - `authority` 只匹配 DSH 当前版本的官方免责原文；宿主改文案后需要更新规则（设置页可直接改）。
+
+## 致谢
+
+- **[Keysmith](https://github.com/Jia-Ethan/codex-keysmith)** —— 作者 [Jia-Ethan](https://github.com/Jia-Ethan)，MIT License。本插件的 `unrestricted` 预设取自其 v0.6.0 的 [`examples/gpt-overlay.md`](https://github.com/Jia-Ethan/codex-keysmith/blob/main/examples/gpt-overlay.md)，规则格式也直接兼容 Keysmith。同系列还有 [claude-keysmith](https://github.com/Jia-Ethan/claude-keysmith) 与 [grok-keysmith](https://github.com/Jia-Ethan/grok-keysmith)，预设库里的其余在线稿都来自这两个仓库。
 
 ## License
 
